@@ -80,8 +80,22 @@ GitHub 令牌在 https://github.com/settings/tokens 生成（**Tokens (classic)*
 workflow 文件：`.github/workflows/docker-publish.yml`。默认只构建 amd64（速度最快）；
 ARM 服务器请按文件内注释改成 `linux/amd64,linux/arm64`。
 
+> **✅ 本仓库已完成一次真实云端构建（2026-09-14）**
+>
+> | 项目 | 值 |
+> |------|-----|
+> | 镜像 | `chungg/qltoolsv2:latest` |
+> | 回滚标签 | `chungg/qltoolsv2:sha-6045d44` |
+> | 摘要 | `sha256:0eee0923f16a606a4048aaab4458695e01a3e8e8e40cfb6074b208ac9749f91d` |
+> | 平台 | `linux/amd64`（**仅此一个平台**；ARM 服务器需改 workflow 后重跑） |
+> | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34829239577 |
+> | 耗时 | 约 4.5 分钟（其中 Go 编译约 133 秒） |
+>
+> 这证明「内嵌源码 + 云端构建」整条链路可用：镜像上下文完整、`//go:embed all:dist`
+> 的前端产物到位、`docs` 包空白导入未被误排除。
+
 > 部署端拿到镜像后，在 `.env` 里填 `IMAGE_REPO=你的用户名/qltoolsv2`，
-> 执行 `./scripts/deploy.sh` 即可一键拉起。
+> 执行 `./scripts/deploy.sh --pull` 即可一键拉起。
 
 ### 路线 B · 本机一键部署（机器上已有 Docker）
 

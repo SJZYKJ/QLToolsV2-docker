@@ -51,6 +51,16 @@ export DOCKERHUB_TOKEN=dckr_pat_xxxxxxxx
 
 详细步骤与原理见 [DEPLOY.md](DEPLOY.md) 的「路线 A」。
 
+> **✅ 本方案已完成一次真实云端构建**（2026-09-14）：
+> 镜像 `chungg/qltoolsv2:latest`，摘要 `sha256:0eee0923f16a...`，平台 `linux/amd64`，
+> 构建日志 https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34829239577
+>
+> 部署端直接用它即可（`.env` 里已默认填好 `IMAGE_REPO=chungg/qltoolsv2`）：
+>
+> ```bash
+> ./scripts/deploy.sh --pull
+> ```
+
 验证：
 
 ```bash
