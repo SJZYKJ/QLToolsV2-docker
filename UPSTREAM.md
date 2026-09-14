@@ -35,6 +35,36 @@
 
 > Based on QLToolsV2 (https://github.com/nuanxinqing123/QLToolsV2), Apache-2.0.
 
+## 对上游文件的一处必要调整
+
+`upstream/.gitignore` **已被移除**。
+
+原因：该文件末尾是 goreleaser 默认生成的 `dist/` 规则，会把 `web/dist`
+挡在版本库之外；而 `web/dist` 是 `web/embed.go` 里 `//go:embed all:dist` 的必需产物，
+一旦它没进 Git 仓库，从仓库克隆出来的代码就会**直接编译失败**。
+
+`scripts/fetch-upstream.sh` 在每次更新源码后都会自动删除它，无需手工处理。
+除此之外 `upstream/` 内的文件保持上游原样。
+
+## 从 Git 仓库克隆后的自查
+
+Git 的忽略规则按目录层级生效，**根目录的规则无法反忽略子目录 `.gitignore` 的排除**。
+本仓库因此遵循两条约定：
+
+- 根 `.gitignore` 忽略根目录时用 `/data/`、`/logs/`（带前导斜杠）；
+  写成无边界的 `data/` 会连 `upstream/internal/data/` 整个 Go 包一起忽略。
+- 不要重新引入 `upstream/.gitignore`。
+
+克隆后可用下面两条命令自查源码是否完整：
+
+```bash
+git ls-files upstream | wc -l   # 已入库的 upstream 文件数
+find upstream -type f | wc -l   # 磁盘上实际的文件数
+```
+
+两者应当**一致**（约 307 个，其中 `web/dist` 占 158 个）。
+若 `git ls-files` 明显偏小，说明有文件被忽略规则挡住了，构建会失败。
+
 ## 如何更新上游源码
 
 ```bash

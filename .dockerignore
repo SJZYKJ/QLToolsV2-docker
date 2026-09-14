@@ -1,14 +1,24 @@
 # ==============================================================================
-# 构建上下文排除规则
+# 构建上下文排除规则 —— ⚠ 改动前请先读完这段
 #
-#   注意：upstream/ 是构建的源码来源，**不要**排除它，
-#         只排除其中与编译无关的文件，以缩小上下文体积。
+#   upstream/ 是镜像构建的**唯一**源码来源，下面这些必须保留：
+#
+#     · 全部 Go 源码：cmd/  internal/  docs/  web/  configs/
+#       ↳ internal/app/initializer/router.go 里空白导入了 .../docs 包
+#         （_ "github.com/nuanxinqing123/QLToolsV2/docs"），
+#         一旦排除 docs/ 就会编译失败。这个坑踩过一次。
+#     · 前端产物 web/dist/（web/embed.go 中 //go:embed all:dist）
+#     · go.mod / go.sum
+#
+#   排除目录一律用前导斜杠（如 /scripts/）限定为根目录，
+#   或写成 upstream/xxx 全路径，避免误伤 upstream/ 下的同名目录。
 # ==============================================================================
 
-# ---- 版本控制与本地环境 ----
+# ---- 版本控制、本地环境与工具数据 ----
 .git
 .gitignore
 .gitattributes
+.workbuddy
 **/.env
 **/.env.local
 **/node_modules
@@ -16,21 +26,21 @@
 **/.idea
 **/__pycache__
 
-# ---- 文档与示例（构建不需要）----
-**/*.md
-docs/
-examples/
-scripts/
+# ---- 仅根目录的文档 / 示例 / 脚本（构建不需要）----
+/*.md
+/docs/
+/examples/
+/scripts/
 
-# ---- upstream/ 中与编译无关的部分（go 源码与 web/dist 必须保留）----
-upstream/.github
-upstream/docs
-upstream/scripts
+# ---- upstream/ 中与编译无关的部分 ----
+upstream/.github/
+upstream/scripts/
+upstream/Makefile
+upstream/README.MD
 upstream/.goreleaser.yaml
 upstream/.gitignore
 upstream/.gitattributes
 upstream/.dockerignore
-upstream/configs/config.example.yaml
 
 # ---- 杂项 ----
 *.log

@@ -114,6 +114,15 @@ else
 fi
 mv "$EXTRACT" upstream
 
+# --------------------------------------------------------------------------
+# 移除上游自带的 .gitignore
+#   它末尾是 goreleaser 默认生成的 dist/ 规则，会把 web/dist 挡在版本库之外，
+#   而 web/dist 是 web/embed.go 里 //go:embed all:dist 的必需产物 ——
+#   没进仓库的话，从仓库克隆出来的代码直接编译不过。
+#   本仓库是"内嵌副本"，这份 .gitignore 没有意义，故删除（详见 UPSTREAM.md）。
+# --------------------------------------------------------------------------
+rm -f upstream/.gitignore
+
 # 写入版本记录，便于追溯构建来源
 {
   echo "repo=${REPO_URL}"
