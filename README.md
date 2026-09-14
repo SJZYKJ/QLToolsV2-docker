@@ -17,7 +17,7 @@ QLToolsV2 是「青龙面板的环境变量第三方提交 / 管理中间件」�
 
 ## 快速开始
 
-只需 Docker + Docker Compose v2。
+### 情况一：本机已经装了 Docker
 
 ```bash
 ./scripts/deploy.sh
@@ -25,6 +25,22 @@ QLToolsV2 是「青龙面板的环境变量第三方提交 / 管理中间件」�
 
 脚本会自动生成 `.env`（含随机 `APP_SECRET`）、构建镜像、启动容器、等待健康检查，
 最后打印访问地址。首次构建约需几分钟（下载 Go 依赖）。
+
+### 情况二：本机没有 Docker（Windows 上很常见）→ 走云端构建
+
+**不用装 Docker、不用 WSL2、不用重启系统。** 把本目录推到一个 GitHub 仓库，
+在仓库 `Settings → Secrets and variables → Actions` 里加两个 Secret：
+
+| 名称 | 值 |
+|------|-----|
+| `DOCKERHUB_USERNAME` | 你的 Docker Hub 用户名 |
+| `DOCKERHUB_TOKEN` | 在 https://hub.docker.com/settings/security 生成的 Access Token（不要用账号密码） |
+
+然后到仓库 `Actions` 页面点 `Run workflow`，几分钟后镜像就出现在 Docker Hub 上了。
+之后在任何机器上把 `.env` 里的 `IMAGE_REPO` 填成 `你的用户名/qltoolsv2`，
+执行 `./scripts/deploy.sh` 即可一键部署。
+
+详细步骤与原理见 [DEPLOY.md](DEPLOY.md) 的「路线 A」。
 
 验证：
 

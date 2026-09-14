@@ -25,12 +25,43 @@
 
 ---
 
-## 二、三种部署路线
+## 二、四种部署路线
 
 先明确概念：**「构建」**是把源码编译成镜像，**「部署」**是把镜像跑起来。
-构建完可以推到自己的镜像仓库，之后部署端就再也不需要源码、也不需要联网编译。
+构建完推到镜像仓库，之后部署端就再也不需要源码、也不需要联网编译。
 
-### 路线 A · 本地一键部署（最省事，适合先跑通）
+| 你机器的情况 | 推荐路线 |
+|--------------|----------|
+| **没有 Docker，也不想装**（Windows 上很常见） | **路线 A · 云端构建** ← 推荐 |
+| 本机 / 服务器上已经有 Docker | 路线 B · 本机一键部署 |
+| 有 Docker，且要把镜像存进自己的仓库 | 路线 C · 本地构建后推送 |
+| 内网隔离、完全不能联网 | 路线 D · 完全离线 |
+
+### 路线 A · 云端构建并推送到 Docker Hub（推荐，本机无需 Docker）
+
+用 GitHub Actions 在云端构建，**本机不用装 Docker、不用 WSL2、不用重启系统**。
+
+一次性准备三步：
+
+1. **推到 GitHub**：把本目录推到一个 GitHub 仓库（私有仓库也可以）
+2. **配置凭据**：仓库 `Settings → Secrets and variables → Actions → New repository secret`，新增两个：
+
+   | 名称 | 值 |
+   |------|-----|
+   | `DOCKERHUB_USERNAME` | 你的 Docker Hub 用户名 |
+   | `DOCKERHUB_TOKEN` | 在 https://hub.docker.com/settings/security 生成的 Access Token（**不要用账号密码**） |
+
+3. **触发构建**：仓库 `Actions` 页面 → 选「构建并推送镜像到 Docker Hub」→ `Run workflow`
+   （也可以打标签触发：`git tag v1.0 && git push origin v1.0`）
+
+构建完成后镜像地址是 `<用户名>/qltoolsv2:latest`，每次构建还会附带短提交号标签便于回滚。
+workflow 文件：`.github/workflows/docker-publish.yml`。默认只构建 amd64（速度最快）；
+ARM 服务器请按文件内注释改成 `linux/amd64,linux/arm64`。
+
+> 部署端拿到镜像后，在 `.env` 里填 `IMAGE_REPO=你的用户名/qltoolsv2`，
+> 执行 `./scripts/deploy.sh` 即可一键拉起。
+
+### 路线 B · 本机一键部署（机器上已有 Docker）
 
 源码已在 `upstream/`，本机直接编译并启动：
 
@@ -41,7 +72,7 @@
 首次运行会自动生成 `.env` 与随机 `APP_SECRET`，然后构建镜像、启动容器、
 等待健康检查通过，最后打印访问地址。**除 Go 模块代理外不访问任何上游。**
 
-### 路线 B · 构建一次，推送到自己的 Docker Hub（推荐用于生产）
+### 路线 C · 本地构建后推送到自己的 Docker Hub
 
 ```bash
 docker login                          # 登录你的 Docker Hub 账号
@@ -64,11 +95,11 @@ cp .env.example .env
 ./scripts/build-push.sh --platforms linux/amd64,linux/arm64 --push
 ```
 
-### 路线 C · 完全离线 / 内网部署
+### 路线 D · 完全离线 / 内网部署
 
 三种递进的做法，按你的隔离程度选择：
 
-**C1. 导出镜像文件搬运（最简单）**
+**D1. 导出镜像文件搬运（最简单）**
 
 ```bash
 # 有网机器
@@ -79,12 +110,12 @@ docker load -i qltoolsv2.tar
 ./scripts/deploy.sh
 ```
 
-**C2. 内网自建镜像仓库**
+**D2. 内网自建镜像仓库**
 
 把 `IMAGE_REPO` 指向内网 registry（如 `registry.intra:5000/qltoolsv2`），
 `build-push.sh --push` 与 `deploy.sh` 都能直接工作。
 
-**C3. 连带 Go 依赖一起离线（真正零外网构建）**
+**D3. 连带 Go 依赖一起离线（真正零外网构建）**
 
 默认构建仍需要访问 Go 模块代理。若连代理也不能访问，先固化依赖：
 
@@ -116,6 +147,7 @@ docker run --rm -v "$PWD/upstream:/src" -w /src golang:1.24-bookworm \
 | `docker-compose.mysql.yml` | 生产方案 A：应用 + MySQL 8 | 三选一 |
 | `docker-compose.postgres.yml` | 生产方案 B：应用 + PostgreSQL 16 | 三选一 |
 | `docker-compose.build.yml` | 构建覆盖文件（override），为上面三个补上 `build:` 段 | 本地构建时必需 |
+| `.github/workflows/docker-publish.yml` | **云端构建**：在 GitHub Actions 上构建并推送到 Docker Hub，本机无需装 Docker | 推荐 |
 | `.env.example` | 环境变量样例；`deploy.sh` 会据此自动生成 `.env` | 推荐 |
 | `.dockerignore` | 精简构建上下文（**注意：不能排除 `upstream/`**） | 推荐 |
 | `.gitattributes` | 强制 shell/yaml 用 LF 换行，防止 Windows 检出成 CRLF 破坏容器启动 | 推荐 |
