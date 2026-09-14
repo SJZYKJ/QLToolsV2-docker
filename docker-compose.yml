@@ -1,0 +1,49 @@
+# ==============================================================================
+# QLToolsV2 —— 默认方案：单容器 + SQLite（零外部依赖，最省事）
+#
+#   一键部署（推荐）：
+#     ./scripts/deploy.sh
+#
+#   等价的手工步骤：
+#     cp .env.example .env
+#     docker compose pull && docker compose up -d        # 用已推送的镜像
+#     或 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+#   浏览器打开 http://<服务器IP>:1500
+#
+#   注意：系统只允许注册一个账号，首个注册者即为管理员。
+#   镜像来自 .env 里的 IMAGE_REPO / IMAGE_TAG，构建方法见 README.md。
+# ==============================================================================
+
+services:
+  qltools:
+    image: ${IMAGE_REPO:-qltoolsv2}:${IMAGE_TAG:-latest}
+    container_name: qltools_v2
+    restart: unless-stopped
+    ports:
+      # 宿主机端口:容器端口（宿主 1500 被占用时改 .env 里的 HOST_PORT）
+      - "${HOST_PORT:-1500}:${APP_PORT:-1500}"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: ${APP_MODE:-release}
+      APP_ADDRESS: ${APP_ADDRESS:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-1500}
+      # JWT 签名密钥，deploy.sh 首次运行会自动写入随机值
+      APP_SECRET: ${APP_SECRET:-change_me_please}
+      DB_TYPE: sqlite
+      DB_NAME: /app/data/ql_tools_v2.db
+    volumes:
+      # SQLite 数据库文件位于 /app/data，必须持久化
+      - qltools_data:/app/data
+    healthcheck:
+      # 上游 /ping 返回 "pong"
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${APP_PORT}/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # 上游实现了 SIGTERM 优雅停机（10 秒超时），这里留出余量
+    stop_grace_period: 15s
+
+volumes:
+  qltools_data:

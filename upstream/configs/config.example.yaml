@@ -1,0 +1,37 @@
+app:
+  # 运行模式【debug、release】
+  mode:        "release"
+  # 运行地址【不懂请写: 0.0.0.0】
+  address:     "127.0.0.1"
+  # 运行端口
+  port:        1500
+  # JWT密钥
+  secret:      "QLToolsV2"
+
+db:
+  # 数据库类型【mysql、postgres、sqlite】
+  type:        "mysql"
+  # 数据库连接地址
+  host:     "127.0.0.1"
+  # 数据库连接端口
+  port:        3306
+  # 数据库名称
+  name:        "ql_tools_v2"
+  # 数据库用户名
+  username:    "root"
+  # 数据库密码
+  password:    "<PASSWORD>"
+  # 数据库配置
+  config: 'charset=utf8mb4&parseTime=True&loc=Local'
+  # 数据库表前缀【全局表前缀，单独定义 TableName 则不生效】
+  prefix: ""
+  # 是否使用单数形式的表名，如果设置为 true，那么 User 模型会对应 users 表
+  singular: true
+  # 数据库空闲连接数
+  max-idle-conns: 10
+  # 数据库最大连接数
+  max-open-conns: 100
+  # 是否写入日志
+  log-zap: false
+  # 日志级别【info、warn、error、silent】
+  log-level: "info"

@@ -1,0 +1,39 @@
+# ==============================================================================
+# 构建上下文排除规则
+#
+#   注意：upstream/ 是构建的源码来源，**不要**排除它，
+#         只排除其中与编译无关的文件，以缩小上下文体积。
+# ==============================================================================
+
+# ---- 版本控制与本地环境 ----
+.git
+.gitignore
+.gitattributes
+**/.env
+**/.env.local
+**/node_modules
+**/.vscode
+**/.idea
+**/__pycache__
+
+# ---- 文档与示例（构建不需要）----
+**/*.md
+docs/
+examples/
+scripts/
+
+# ---- upstream/ 中与编译无关的部分（go 源码与 web/dist 必须保留）----
+upstream/.github
+upstream/docs
+upstream/scripts
+upstream/.goreleaser.yaml
+upstream/.gitignore
+upstream/.gitattributes
+upstream/.dockerignore
+upstream/configs/config.example.yaml
+
+# ---- 杂项 ----
+*.log
+captcha.png
+*.tar.gz
+*.tgz

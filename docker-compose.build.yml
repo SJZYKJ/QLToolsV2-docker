@@ -1,0 +1,23 @@
+# ==============================================================================
+# 本地构建覆盖文件（override）
+#
+#   本文件不单独使用，而是叠加到某个 docker-compose*.yml 上，
+#   为 qltools 服务补上 build 段，从而用仓库内嵌的 upstream/ 源码构建镜像。
+#
+#   用法（由 scripts/deploy.sh --build 自动调用）：
+#     docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#     docker compose -f docker-compose.mysql.yml -f docker-compose.build.yml up -d --build
+#
+#   构建产物会打上基础文件里的 image 名（${IMAGE_REPO}:${IMAGE_TAG}）。
+#   若只想构建并推送、不启动容器，请用 ./scripts/build-push.sh --push
+# ==============================================================================
+
+services:
+  qltools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # 国内网络建议 goproxy.cn；海外改成 https://proxy.golang.org,direct
+        GOPROXY: ${GOPROXY:-https://goproxy.cn,https://proxy.golang.org,direct}
+        TZ: ${TZ:-Asia/Shanghai}

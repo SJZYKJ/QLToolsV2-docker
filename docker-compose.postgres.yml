@@ -1,0 +1,68 @@
+# ==============================================================================
+# QLToolsV2 —— 生产方案 B：应用 + PostgreSQL 16
+#
+#   一键部署：
+#     ./scripts/deploy.sh postgres
+#
+#   上游 internal/data/client.go 对 postgres 分支的 DSN 是：
+#       host=... port=... user=... password=... dbname=... <db.config>
+#   db.config 需要 libpq 风格参数，entrypoint 已默认填 sslmode=disable。
+#   切勿沿用 MySQL 的 "charset=utf8mb4&parseTime=True&loc=Local"，
+#   那串参数会让 postgres 驱动直接连接失败。
+# ==============================================================================
+
+services:
+  qltools:
+    image: ${IMAGE_REPO:-qltoolsv2}:${IMAGE_TAG:-latest}
+    container_name: qltools_v2
+    restart: unless-stopped
+    depends_on:
+      qltools-postgres:
+        condition: service_healthy
+    ports:
+      - "${HOST_PORT:-1500}:${APP_PORT:-1500}"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: ${APP_MODE:-release}
+      APP_ADDRESS: ${APP_ADDRESS:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-1500}
+      APP_SECRET: ${APP_SECRET:-change_me_please}
+      DB_TYPE: postgres
+      DB_HOST: qltools-postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-ql_tools_v2}
+      DB_USERNAME: ${POSTGRES_USER:-qltools}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-qltools_password}
+      DB_CONFIG: sslmode=disable
+    volumes:
+      - qltools_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${APP_PORT}/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 15s
+
+  qltools-postgres:
+    image: postgres:16-alpine
+    container_name: qltools_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ql_tools_v2}
+      POSTGRES_USER: ${POSTGRES_USER:-qltools}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qltools_password}
+      TZ: ${TZ:-Asia/Shanghai}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - qltools_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  qltools_data:
+  qltools_postgres_data:

@@ -1,0 +1,64 @@
+# QLToolsV2 配置参考
+# ============================================================================
+# 重要：容器运行时并不会使用本文件。
+#   /app/entrypoint.sh 会在每次启动时依据环境变量重新生成
+#   /app/configs/config.yaml，本文件仅用于说明各配置项的含义与结构。
+#
+# 结构完全对齐上游 configs/config.example.yaml
+#   （internal/app/config/config.go: Configuration{App, DB, Cache}）
+#
+# 想让容器直接使用你自己的配置文件：把本文件挂载到 /app/configs/config.yaml
+# 并设置环境变量 KEEP_CONFIG=1。
+# ============================================================================
+
+app:
+  # 运行模式：debug / release / test
+  # release -> gin.ReleaseMode；debug 才会额外暴露 /swagger/*any
+  mode: "release"
+  # 注意：上游 internal/app/bootstrap.go 里启动 HTTP 服务用的是
+  # fmt.Sprintf(":%d", port)，只取了端口，所以 address 实际不生效，
+  # 进程始终监听 0.0.0.0。此项保留仅为兼容配置结构。
+  address: "0.0.0.0"
+  # 监听端口
+  port: 1500
+  # JWT 签名密钥，生产环境务必修改
+  secret: "QLToolsV2"
+
+db:
+  # 数据库类型：sqlite / mysql / postgres（postgresql 亦可）
+  type: "sqlite"
+
+  # sqlite 时：name 为数据库文件路径，host/port/username/password/config 全部忽略
+  #            程序会自行在 name 后追加 "?_fk=1"，所以路径中不可含 "?"
+  # mysql  时：DSN = username:password@tcp(host:port)/name?config
+  # postgres 时：DSN = host=... port=... user=... password=... dbname=... <config>
+  #            —— config 需为 libpq 风格参数（如 sslmode=disable）
+  host: ""
+  port: 0
+  name: "/app/data/ql_tools_v2.db"
+  username: ""
+  password: ""
+  config: ''
+
+  # 数据库表前缀
+  prefix: ""
+  # 是否使用单数形式表名
+  singular: true
+  # 连接池
+  max-idle-conns: 10
+  max-open-conns: 100
+  # 是否把数据库日志写入 zap
+  log-zap: false
+  # 日志级别：info / warn / error / silent
+  log-level: "info"
+
+# ============================================================================
+# 缓存：当前版本使用进程内 gcache（internal/app/initializer/cache.go：
+# gcache.New(256).ARC().Build()），不依赖 Redis。本段不生效，保留以兼容结构。
+# ============================================================================
+cache:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  db: 0
+  pool-size: 10

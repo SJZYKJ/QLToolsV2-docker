@@ -1,0 +1,76 @@
+# ==============================================================================
+# QLToolsV2 —— 生产方案 A：应用 + MySQL 8
+#
+#   一键部署：
+#     ./scripts/deploy.sh mysql
+#
+#   等价的手工步骤：
+#     cp .env.example .env          # 改掉所有密码与 APP_SECRET
+#     docker compose -f docker-compose.mysql.yml up -d
+#     或加上 -f docker-compose.build.yml 并追加 --build 走本地构建
+#
+#   数据表由 Ent 在首次启动时自动迁移创建，无需手工初始化。
+# ==============================================================================
+
+services:
+  qltools:
+    image: ${IMAGE_REPO:-qltoolsv2}:${IMAGE_TAG:-latest}
+    container_name: qltools_v2
+    restart: unless-stopped
+    depends_on:
+      qltools-mysql:
+        condition: service_healthy
+    ports:
+      - "${HOST_PORT:-1500}:${APP_PORT:-1500}"
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      APP_MODE: ${APP_MODE:-release}
+      APP_ADDRESS: ${APP_ADDRESS:-0.0.0.0}
+      APP_PORT: ${APP_PORT:-1500}
+      APP_SECRET: ${APP_SECRET:-change_me_please}
+      DB_TYPE: mysql
+      DB_HOST: qltools-mysql
+      DB_PORT: "3306"
+      DB_NAME: ${MYSQL_DATABASE:-ql_tools_v2}
+      DB_USERNAME: ${MYSQL_USER:-qltools}
+      # 与下方 MySQL 服务保持同一个变量，避免两边密码不一致
+      DB_PASSWORD: ${MYSQL_PASSWORD:-qltools_password}
+      # 如无特殊需求可省略，entrypoint 会自动补
+      # DB_CONFIG: charset=utf8mb4&parseTime=True&loc=Local
+    volumes:
+      # MySQL 方案下此卷不再存数据库，仅作为通用数据目录保留
+      - qltools_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${APP_PORT}/ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    stop_grace_period: 15s
+
+  qltools-mysql:
+    image: mysql:8.0
+    container_name: qltools_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ql_tools_v2}
+      MYSQL_USER: ${MYSQL_USER:-qltools}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-qltools_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password_change_me}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - qltools_mysql_data:/var/lib/mysql
+    healthcheck:
+      # 用应用账号做 ping，避免 root 密码变量缺失时误判
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  qltools_data:
+  qltools_mysql_data:
