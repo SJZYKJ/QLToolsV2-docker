@@ -32,6 +32,15 @@ ROOT="$(pwd)"
 PY="${PYTHON_BIN:-python}"
 PY_HELPER="$SCRIPT_DIR/gh-set-secret.py"
 
+# Windows 上 python 是原生程序，不认 MSYS 的 /d/... 路径（会被当成相对路径，
+# 拼成 D:\d\...）。这里把 /d/foo 转成 d:/foo。
+winpath() {
+  case "$1" in
+    /[a-zA-Z]/*) printf '%s' "$(printf '%s' "$1" | sed -E 's|^/([a-zA-Z])/|\1:/|')" ;;
+    *)           printf '%s' "$1" ;;
+  esac
+}
+
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; CYAN=$'\033[36m'; NC=$'\033[0m'
 info() { printf '%s==>%s %s\n' "$CYAN" "$NC" "$*"; }
 ok()   { printf '%s  OK %s %s\n' "$GREEN" "$NC" "$*"; }
@@ -166,8 +175,9 @@ fi
 
 # --------------------------------------------------------------- 4. 配 Secret
 info "写入 Actions Secrets"
-GH_TOKEN="$GH_TOKEN" "$PY" "$PY_HELPER" "$FULL" DOCKERHUB_USERNAME "$DOCKERHUB_USERNAME"
-GH_TOKEN="$GH_TOKEN" "$PY" "$PY_HELPER" "$FULL" DOCKERHUB_TOKEN "$DOCKERHUB_TOKEN"
+PY_HELPER_N="$(winpath "$PY_HELPER")"
+GH_TOKEN="$GH_TOKEN" "$PY" "$PY_HELPER_N" "$FULL" DOCKERHUB_USERNAME "$DOCKERHUB_USERNAME"
+GH_TOKEN="$GH_TOKEN" "$PY" "$PY_HELPER_N" "$FULL" DOCKERHUB_TOKEN "$DOCKERHUB_TOKEN"
 
 # --------------------------------------------------------------- 5. 触发构建
 if [ "${SKIP_TRIGGER:-0}" = "1" ]; then
