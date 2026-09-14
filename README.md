@@ -40,6 +40,15 @@ QLToolsV2 是「青龙面板的环境变量第三方提交 / 管理中间件」�
 之后在任何机器上把 `.env` 里的 `IMAGE_REPO` 填成 `你的用户名/qltoolsv2`，
 执行 `./scripts/deploy.sh` 即可一键部署。
 
+**一条命令做完（本机没装 Git 时尤其推荐）**——建仓库、推送、写 Secret、触发构建全自动：
+
+```bash
+export GH_TOKEN=ghp_xxxxxxxxxxxx     # GitHub 令牌，需 repo + workflow 权限
+export DOCKERHUB_USERNAME=你的用户名
+export DOCKERHUB_TOKEN=dckr_pat_xxxxxxxx
+./scripts/github-bootstrap.sh
+```
+
 详细步骤与原理见 [DEPLOY.md](DEPLOY.md) 的「路线 A」。
 
 验证：

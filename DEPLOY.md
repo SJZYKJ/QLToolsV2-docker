@@ -41,7 +41,29 @@
 
 用 GitHub Actions 在云端构建，**本机不用装 Docker、不用 WSL2、不用重启系统**。
 
-一次性准备三步：
+#### A-0. 一条命令做完（推荐）
+
+如果本机**没有独立安装 Git**（只有编辑器内置的 Git，PowerShell 里 `git` 报
+「无法将"git"项识别为 cmdlet」），或者你不想手动点网页，用下面这个脚本，
+它会自动完成「建仓库 → 推送 → 写 Secret → 触发构建」全部四步：
+
+```bash
+export GH_TOKEN=ghp_xxxxxxxxxxxx          # GitHub 令牌，需 repo + workflow 权限
+export DOCKERHUB_USERNAME=你的用户名
+export DOCKERHUB_TOKEN=dckr_pat_xxxxxxxx
+./scripts/github-bootstrap.sh
+```
+
+GitHub 令牌在 https://github.com/settings/tokens 生成（**Tokens (classic)** →
+`Generate new token (classic)` → 勾选 `repo` 和 `workflow` 两个权限）。
+
+> 为什么需要 `workflow` 权限：本仓库包含 `.github/workflows/` 目录，
+> 缺少该权限推送时会被 GitHub 拒绝（报 `refusing to allow an OAuth App to create...`）。
+
+脚本可选参数（环境变量）：`GH_OWNER`（默认令牌所属账号）、`GH_REPO`（默认 `QLToolsV2-docker`）、
+`GH_VISIBILITY`（默认 `private`）、`SKIP_PUSH=1`、`SKIP_TRIGGER=1`。
+
+#### A-1. 手工做法：三步
 
 1. **推到 GitHub**：把本目录推到一个 GitHub 仓库（私有仓库也可以）
 2. **配置凭据**：仓库 `Settings → Secrets and variables → Actions → New repository secret`，新增两个：
