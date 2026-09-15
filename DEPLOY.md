@@ -89,6 +89,39 @@ sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=latest/' .env
 docker compose pull && docker compose up -d
 ```
 
+### 2.5 标签被误删了怎么找回（**不用重新构建**）
+
+Docker Hub 上的标签被误删——尤其是 `latest`——不必重新构建镜像。
+`.github/workflows/retag-latest.yml` 会把已有标签的 manifest 原样复制一份到 `latest`，
+**digest 完全一致**，几秒完成，且**不会产生新的版本号**。
+
+做法：仓库 **Actions → 左侧选「重新上传 latest 标签」→ Run workflow**，
+`source_tag` 填要复制的标签（如 `SHA-0915-V1.0`）；留空则自动取当天最新的
+`SHA-<月日>-V<序号>.0`。
+
+也可以用 API 触发（`<TOKEN>` 需有 `repo` + `workflow` 权限）：
+
+```bash
+curl -X POST \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/SJZYKJ/QLToolsV2-docker/actions/workflows/retag-latest.yml/dispatches \
+  -d '{"ref":"main","inputs":{"source_tag":"SHA-0915-V1.0"}}'
+```
+
+验证两边 digest 一致：
+
+```bash
+for t in latest SHA-0915-V1.0; do
+  printf '%s -> ' "$t"
+  curl -s "https://hub.docker.com/v2/repositories/chungg/qltoolsv2/tags/$t" | grep -o '"digest":"[^"]*"'
+done
+```
+
+> **与 `docker-publish.yml` 的区别**：后者是「从源码构建新镜像」，每跑一次都会
+> 产生一个新版本号（`V1.0`、`V2.0`…）；前者只是「给已有镜像再挂一个标签」，
+> 不构建任何东西。所以只想把 `latest` 找回来时，用 `retag-latest.yml`。
+
 ---
 
 ## 三、四种部署方式
@@ -213,6 +246,9 @@ GitHub 令牌在 https://github.com/settings/tokens 生成（**Tokens (classic)*
 workflow 文件：`.github/workflows/docker-publish.yml`。构建成功后会推
 `latest`、版本标签（`SHA-<月日>-V<序号>.0`）与提交标签（`sha-<7位>`）三个标签，
 并自动打一个同名 Git 标签、创建同名 Release。规则见[第二节](#二版本与镜像标签)。
+
+> 只是想**把被删掉的 `latest` 补回来**（不重新构建、不产生新版本）→
+> 用 `.github/workflows/retag-latest.yml`，见 [2.5](#25-标签被误删了怎么找回不用重新构建)。
 
 > **默认只构建 `linux/amd64`**。部署到 ARM 服务器（部分云主机、树莓派）前，
 > 请按文件内注释把 `platforms` 改成 `linux/amd64,linux/arm64` 后重跑。
@@ -588,6 +624,7 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | `scripts/github-bootstrap.sh` | 建仓库 → 推送 → 写 Secret → 触发云端构建，一条龙 | 可选 |
 | `scripts/gh-set-secret.py` | 上面脚本的辅助程序（GitHub 要求 Secret 加密上传） | 可选 |
 | `.github/workflows/docker-publish.yml` | **云端构建**：在 GitHub Actions 上构建并推送，本机无需装 Docker | 可选 |
+| `.github/workflows/retag-latest.yml` | **重刷标签**：把已有镜像的 manifest 复制给 `latest`，不重建、不产生新版本（见 2.5） | 可选 |
 | `.env.example` | 环境变量样例；`deploy.sh` 会据此自动生成 `.env` | 推荐 |
 | `.dockerignore` | 精简构建上下文（**注意：不能排除 `src/` 下的源码与 `web/dist`**） | 推荐 |
 | `.gitattributes` | 强制 shell/yaml 用 LF 换行，防止 Windows 检出成 CRLF 破坏容器启动 | 推荐 |
@@ -622,7 +659,8 @@ QLToolsV2-docker/
 ├── configs/
 │   └── config.yaml                  # 配置参考样例
 ├── .github/workflows/
-│   └── docker-publish.yml           # 云端构建并推送
+│   ├── docker-publish.yml           # 云端构建并推送
+│   └── retag-latest.yml             # 仅重刷 latest 标签（不重建）
 ├── Dockerfile
 ├── docker-compose.yml               # SQLite
 ├── docker-compose.mysql.yml         # MySQL

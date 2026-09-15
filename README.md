@@ -182,7 +182,8 @@ QLToolsV2-docker/
 ├── docker-compose.build.yml        # 本地构建用的 override（拉镜像部署不需要）
 ├── .env.example                    # 环境变量样例
 ├── .github/workflows/
-│   └── docker-publish.yml          # 云端构建：构建镜像并推送到 Docker Hub
+│   ├── docker-publish.yml          # 云端构建：构建镜像并推送到 Docker Hub
+│   └── retag-latest.yml            # 仅重刷 latest 标签（不重新构建）
 ├── scripts/
 │   ├── deploy.sh                   # 一键部署
 │   ├── build-push.sh               # 构建镜像并推送到镜像仓库
