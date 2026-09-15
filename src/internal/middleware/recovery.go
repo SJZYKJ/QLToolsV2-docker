@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
 )
 
 // Recovery recover掉项目可能出现的panic，并使用zap记录相关日志

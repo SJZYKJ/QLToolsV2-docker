@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
 )
 
 // The CdKeyFunc type is an adapter to allow the use of ordinary

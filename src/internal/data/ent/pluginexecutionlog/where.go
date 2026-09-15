@@ -7,7 +7,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/predicate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/predicate"
 )
 
 // ID filters vertices based on their ID field.

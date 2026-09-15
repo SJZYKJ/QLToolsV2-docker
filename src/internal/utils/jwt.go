@@ -7,8 +7,8 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	_const "github.com/nuanxinqing123/QLToolsV2/internal/const"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	_const "github.com/SJZYKJ/QLToolsV2-docker/internal/const"
 )
 
 // JWT配置常量

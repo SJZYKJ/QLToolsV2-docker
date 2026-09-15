@@ -1,7 +1,7 @@
 package initializer
 
 import (
-	"github.com/nuanxinqing123/QLToolsV2/internal/middleware"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/middleware"
 )
 
 // StartRateLimitCleanup 启动限速器清理任务

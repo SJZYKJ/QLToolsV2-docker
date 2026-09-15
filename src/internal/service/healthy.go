@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	res "github.com/nuanxinqing123/QLToolsV2/internal/pkg/response"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	res "github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/response"
 )
 
 type HealthyService struct{}

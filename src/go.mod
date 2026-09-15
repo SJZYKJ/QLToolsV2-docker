@@ -1,4 +1,4 @@
-module github.com/nuanxinqing123/QLToolsV2
+module github.com/SJZYKJ/QLToolsV2-docker
 
 go 1.24.0
 

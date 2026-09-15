@@ -5,7 +5,7 @@
 #
 #     · 全部 Go 源码：cmd/  internal/  docs/  web/  configs/
 #       ↳ src/internal/app/initializer/router.go 里空白导入了 .../docs 包
-#         （_ "github.com/nuanxinqing123/QLToolsV2/docs"），
+#         （_ "github.com/SJZYKJ/QLToolsV2-docker/docs"），
 #         一旦排除 docs/ 就会编译失败。这个坑踩过一次。
 #     · 前端产物 web/dist/（src/web/embed.go 中 //go:embed all:dist）
 #     · go.mod / go.sum
@@ -33,14 +33,10 @@
 /scripts/
 
 # ---- src/ 中与编译无关的部分 ----
-src/.github/
 src/scripts/
 src/Makefile
-src/README.MD
-src/.goreleaser.yaml
+src/README.md
 src/.gitignore
-src/.gitattributes
-src/.dockerignore
 
 # ---- 杂项 ----
 *.log

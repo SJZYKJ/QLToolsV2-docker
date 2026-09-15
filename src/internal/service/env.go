@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/envplugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/panel"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/envplugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/panel"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
 )
 
 type EnvService struct{}

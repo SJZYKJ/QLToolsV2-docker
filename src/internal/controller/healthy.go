@@ -2,8 +2,8 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	res "github.com/nuanxinqing123/QLToolsV2/internal/pkg/response"
-	"github.com/nuanxinqing123/QLToolsV2/internal/service"
+	res "github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/response"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/service"
 )
 
 type HealthyController struct {

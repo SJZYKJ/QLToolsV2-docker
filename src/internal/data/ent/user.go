@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/user"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/user"
 )
 
 // User is the model entity for the User schema.

@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/pkg/response"
-	"github.com/nuanxinqing123/QLToolsV2/web"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/response"
+	"github.com/SJZYKJ/QLToolsV2-docker/web"
 )
 
 // SetupWebFrontend 注册前端静态资源

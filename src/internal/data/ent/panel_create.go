@@ -10,8 +10,8 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/panel"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/panel"
 )
 
 // PanelCreate is the builder for creating a Panel entity.

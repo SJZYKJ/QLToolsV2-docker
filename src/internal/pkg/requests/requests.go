@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-resty/resty/v2"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
 )
 
 // Request HTTP请求客户端结构体

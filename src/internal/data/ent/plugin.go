@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
 )
 
 // Plugin is the model entity for the Plugin schema.

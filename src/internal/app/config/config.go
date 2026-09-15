@@ -3,8 +3,8 @@ package config
 import (
 	"github.com/bluele/gcache"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config/autoload"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config/autoload"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )

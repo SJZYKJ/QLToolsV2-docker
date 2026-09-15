@@ -11,8 +11,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
 )
 
 var (

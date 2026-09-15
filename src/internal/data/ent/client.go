@@ -9,20 +9,20 @@ import (
 	"log"
 	"reflect"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/migrate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/migrate"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/cdkey"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/envplugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/loginhistory"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/panel"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/pluginexecutionlog"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/user"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/cdkey"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/envplugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/loginhistory"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/panel"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/pluginexecutionlog"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/user"
 )
 
 // Client is the client that holds all ent builders.

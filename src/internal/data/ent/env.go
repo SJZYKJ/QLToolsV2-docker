@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
 )
 
 // Env is the model entity for the Env schema.

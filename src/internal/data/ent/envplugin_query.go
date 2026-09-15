@@ -11,10 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/envplugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/predicate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/envplugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/predicate"
 )
 
 // EnvPluginQuery is the builder for querying EnvPlugin entities.

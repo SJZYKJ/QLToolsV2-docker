@@ -9,9 +9,9 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/envplugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/envplugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
 )
 
 // EnvPlugin is the model entity for the EnvPlugin schema.

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/utils"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/utils"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )

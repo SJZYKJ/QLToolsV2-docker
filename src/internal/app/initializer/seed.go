@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/user"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/user"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )

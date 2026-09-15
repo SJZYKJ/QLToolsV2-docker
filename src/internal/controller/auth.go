@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mojocn/base64Captcha"
-	"github.com/nuanxinqing123/QLToolsV2/internal/pkg/response"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
-	"github.com/nuanxinqing123/QLToolsV2/internal/service"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/response"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/service"
 )
 
 type AuthController struct {

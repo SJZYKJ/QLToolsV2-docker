@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/cdkey"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/cdkey"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
 	"github.com/segmentio/ksuid"
 )
 

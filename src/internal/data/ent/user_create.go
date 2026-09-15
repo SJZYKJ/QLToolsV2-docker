@@ -10,7 +10,7 @@ import (
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/user"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/user"
 )
 
 // UserCreate is the builder for creating a User entity.

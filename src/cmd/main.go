@@ -20,7 +20,7 @@
 // @description Bearer token for API authentication
 package main
 
-import "github.com/nuanxinqing123/QLToolsV2/internal/app"
+import "github.com/SJZYKJ/QLToolsV2-docker/internal/app"
 
 func main() {
 	app.Start()

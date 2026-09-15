@@ -15,9 +15,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/initializer"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/initializer"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data"
 	"go.uber.org/zap"
 )
 

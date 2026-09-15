@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/cdkey"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/cdkey"
 )
 
 // CdKey is the model entity for the CdKey schema.

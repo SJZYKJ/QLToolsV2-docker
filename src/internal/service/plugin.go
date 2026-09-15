@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/envplugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/pluginexecutionlog"
-	pkgPlugin "github.com/nuanxinqing123/QLToolsV2/internal/pkg/plugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/envplugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/pluginexecutionlog"
+	pkgPlugin "github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
 )
 
 type PluginService struct {

@@ -9,7 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/panel"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/panel"
 )
 
 // Panel is the model entity for the Panel schema.

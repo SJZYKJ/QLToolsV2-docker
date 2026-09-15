@@ -149,8 +149,12 @@ docker compose pull && docker compose up -d   # 升级到最新镜像
 > 服务器连不上 GitHub 也能正常部署和升级，详见
 > [DEPLOY.md 方式 A4](DEPLOY.md) / [TROUBLESHOOTING.md 3.4](TROUBLESHOOTING.md)。
 
-**回滚**：把 `.env` 里的 `IMAGE_TAG` 改成之前构建产出的提交号标签
-（格式 `sha-<7位提交号>`）后重新 `docker compose up -d`。
+**回滚**：把 `.env` 里的 `IMAGE_TAG` 改成版本标签（格式 `SHA-<月日>-V<序号>.0`，
+如 `SHA-0915-V1.0`）或提交标签（格式 `sha-<7位提交号>`）后重新 `docker compose up -d`。
+
+> 三个标签的分工：`latest` 跟最新、`SHA-0915-V1.0` 是本次发布的版本号
+> （GitHub 上有同名的 Git 标签与 Release）、`sha-a3b9fbf` 用于按提交精确回滚。
+> 完整规则见 [DEPLOY.md 第二节](DEPLOY.md)。
 
 **切换数据库**（SQLite → MySQL / PostgreSQL）：
 
@@ -177,12 +181,15 @@ QLToolsV2-docker/
 ├── docker-compose.postgres.yml     # 应用 + PostgreSQL 16
 ├── docker-compose.build.yml        # 本地构建用的 override（拉镜像部署不需要）
 ├── .env.example                    # 环境变量样例
+├── .github/workflows/
+│   └── docker-publish.yml          # 云端构建：构建镜像并推送到 Docker Hub
 ├── scripts/
 │   ├── deploy.sh                   # 一键部署
 │   ├── build-push.sh               # 构建镜像并推送到镜像仓库
 │   ├── github-bootstrap.sh         # 建仓库 → 推送 → 配 Secret → 触发云端构建
 │   └── gh-set-secret.py            # 上面脚本的辅助程序
-├── src/                            # 服务端源码（含已内嵌的前端产物 web/dist）
+├── src/                            # 服务端源码（299 文件，含已内嵌的前端产物 web/dist）
+│   └── README.md                   # 源码导读 + 本地构建 / 重新生成 Ent 代码
 ├── configs/config.yaml             # 配置参考样例（容器不读它）
 ├── examples/                       # 提交数据的两条示例
 ├── README.md                       # 入口文档（30 秒部署）
@@ -206,7 +213,7 @@ QLToolsV2-docker/
 
 ## 环境变量速查
 
-最常改的几个（完整表格见 [DEPLOY.md](DEPLOY.md) 第六节）：
+最常改的几个（完整表格见 [DEPLOY.md](DEPLOY.md) 第五节）：
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
@@ -219,7 +226,7 @@ QLToolsV2-docker/
 | `QLTOOLS_ADMIN_PASSWORD` | 空 | 初始管理员密码。**留空则不自动建号**，改用 `/admin` 页面的「注册账号」 |
 | `QLTOOLS_ADMIN_RESET` | `0` | 置 `1` 重启一次即把已存在账号的密码重置成上面的值（找回密码用，用完改回 `0`） |
 | `IMAGE_REPO` | `chungg/qltoolsv2` | 想用自己构建的镜像时改这里 |
-| `IMAGE_TAG` | `latest` | 也可填 `sha-<提交号>` 精确锁定并支持回滚 |
+| `IMAGE_TAG` | `latest` | 也可填版本标签 `SHA-<月日>-V<序号>.0` 或提交标签 `sha-<提交号>` 精确锁定并支持回滚 |
 
 ---
 
@@ -238,6 +245,10 @@ QLToolsV2-docker/
 - **API 路径未匹配时返回的是 JSON，不是 HTML**：`{"code": 50001, "msg": "接口不存在: <方法> <路径>"}`。
   如果你只看到一个光秃秃的 `Error` 提示，基本可以断定是**路径或 HTTP 方法写错了**，
   而不是后端逻辑出错——打开浏览器 F12 的 Network 面板看那条请求的真实响应即可确认。
+- **镜像有三个标签**：`latest`（最新）、`SHA-<月日>-V<序号>.0`（本次版本号，
+  与 GitHub 上的 Git 标签 / Release 同名）、`sha-<7位提交号>`（按提交回滚用）。
+- **后台自带正则说明书**：登录后左侧菜单「帮助 → 正则说明」，纯静态页面，
+  随镜像内嵌，不需要联网也不依赖后端接口。
 
 ---
 
@@ -258,7 +269,7 @@ export DOCKERHUB_TOKEN=dckr_pat_xxxx  # Docker Hub Access Token
 ./scripts/github-bootstrap.sh         # 建仓库 → 推送 → 配 Secret → 触发构建
 ```
 
-源码在 `src/`（306 个文件，含已入库的前端产物 `web/dist`），构建期只下载 Go 模块，
+源码在 `src/`（299 个文件，含已入库的前端产物 `web/dist`），构建期只下载 Go 模块，
 不访问任何代码托管站点。若需**完全离线构建**，见 [DEPLOY.md](DEPLOY.md) 的「完全离线 / 内网部署」。
 
 ---

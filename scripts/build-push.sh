@@ -8,6 +8,9 @@
 #   ./scripts/build-push.sh --platforms linux/amd64,linux/arm64 --push
 #   DRY_RUN=1 ./scripts/build-push.sh --push           # 只打印命令，不执行
 #
+#   --push 时除 IMAGE_TAG 外，还会额外打一个版本标签 SHA-<月日>-V<当天序号>.0
+#   （与 CI 的命名规则一致，见 DEPLOY.md 第二节）。
+#
 #   变量优先取环境变量，其次自动读取同目录 .env：
 #     IMAGE_REPO   镜像仓库，例如 yourname/qltoolsv2
 #     IMAGE_TAG    镜像标签，默认 latest
@@ -100,7 +103,7 @@ if [ -z "$IMAGE_REPO" ]; then
   [ "$PUSH" = "1" ] && { echo "!! --push 需要先在 .env 里设置 IMAGE_REPO=你的用户名/qltoolsv2" >&2; exit 1; }
 fi
 
-echo "   源码      ：src/  $( [ -f src/.source-rev ] && grep -E '^original_commit=' src/.source-rev | cut -d= -f2 || echo '(未记录版本)' )"
+echo "   源码      ：src/  $(git -C . rev-parse --short HEAD 2>/dev/null || echo '(非 git 工作区)')"
 echo "   镜像      ：${IMAGE_REPO}:${IMAGE_TAG}"
 echo "   平台      ：${PLATFORMS:-当前平台}"
 echo "   GOPROXY   ：${GOPROXY}"
@@ -108,10 +111,22 @@ echo "   推送      ：$([ "$PUSH" = "1" ] && echo 是 || echo 否)"
 echo "==================================================================="
 echo
 
-DATE_TAG="$(date +%Y%m%d)"
+# 版本标签：SHA-<月日>-V<当天序号>.0，与 CI（.github/workflows/docker-publish.yml）同一套规则。
+# 序号取自本仓库当天的同名 Git 标签，因此本地构建与云端构建的版本号能对得上。
+MMDD="$(TZ=Asia/Shanghai date +%m%d)"
+MAX_SEQ=0
+if command -v git >/dev/null 2>&1; then
+  MAX_SEQ="$(git tag -l "SHA-${MMDD}-V*" 2>/dev/null \
+              | sed -nE 's/^SHA-[0-9]{4}-V([0-9]+)\.[0-9]+$/\1/p' \
+              | sort -n | tail -1)"
+  [ -z "$MAX_SEQ" ] && MAX_SEQ=0
+fi
+VERSION_TAG="SHA-${MMDD}-V$((MAX_SEQ + 1)).0"
+echo "   版本标签  ：${VERSION_TAG}"
+
 IMAGE_LIST=("${IMAGE_REPO}:${IMAGE_TAG}")
-if [ "$PUSH" = "1" ] && [ "$IMAGE_TAG" != "$DATE_TAG" ]; then
-  IMAGE_LIST+=("${IMAGE_REPO}:${DATE_TAG}")
+if [ "$PUSH" = "1" ] && [ "$IMAGE_TAG" != "$VERSION_TAG" ]; then
+  IMAGE_LIST+=("${IMAGE_REPO}:${VERSION_TAG}")
 fi
 
 TAG_ARGS=()

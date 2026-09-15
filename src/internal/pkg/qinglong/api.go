@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/pkg/requests"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/requests"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
 )
 
 // TokenRefreshCallback token刷新回调函数类型

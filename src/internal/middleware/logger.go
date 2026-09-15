@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	_const "github.com/nuanxinqing123/QLToolsV2/internal/const"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	_const "github.com/SJZYKJ/QLToolsV2-docker/internal/const"
 	"go.uber.org/zap"
 )
 

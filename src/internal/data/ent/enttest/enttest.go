@@ -5,12 +5,12 @@ package enttest
 import (
 	"context"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent"
 	// required by schema hooks.
-	_ "github.com/nuanxinqing123/QLToolsV2/internal/data/ent/runtime"
+	_ "github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/runtime"
 
 	"entgo.io/ent/dialect/sql/schema"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/migrate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/migrate"
 )
 
 type (

@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/plugin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/pluginexecutionlog"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/predicate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/plugin"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/pluginexecutionlog"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/predicate"
 )
 
 // PluginExecutionLogQuery is the builder for querying PluginExecutionLog entities.

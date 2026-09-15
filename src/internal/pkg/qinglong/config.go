@@ -3,9 +3,9 @@ package qinglong
 import (
 	"fmt"
 
-	"github.com/nuanxinqing123/QLToolsV2/internal/app/config"
-	"github.com/nuanxinqing123/QLToolsV2/internal/pkg/requests"
-	"github.com/nuanxinqing123/QLToolsV2/internal/schema"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/app/config"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/requests"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/schema"
 )
 
 // QlConfig QL配置

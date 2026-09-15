@@ -2,7 +2,7 @@
 
 package runtime
 
-// The schema-stitching logic is generated in github.com/nuanxinqing123/QLToolsV2/internal/data/ent/runtime.go
+// The schema-stitching logic is generated in github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/runtime.go
 
 const (
 	Version = "v0.14.5"                                         // Version of ent codegen.

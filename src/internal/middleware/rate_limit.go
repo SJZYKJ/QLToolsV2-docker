@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nuanxinqing123/QLToolsV2/internal/pkg/response"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/pkg/response"
 )
 
 // TokenBucket 令牌桶结构

@@ -11,9 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/env"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/panel"
-	"github.com/nuanxinqing123/QLToolsV2/internal/data/ent/predicate"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/env"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/panel"
+	"github.com/SJZYKJ/QLToolsV2-docker/internal/data/ent/predicate"
 )
 
 // PanelUpdate is the builder for updating Panel entities.
