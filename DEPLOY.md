@@ -669,6 +669,7 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 20 | **未匹配路由会分流**：非 `/api/` 且不含 `.` 的路径交给前端 `index.html`（SPA history 模式，HTTP 200）；`/api/*` 未匹配则返回 JSON `{"code":50001,"msg":"接口不存在: <方法> <路径>"}`。**API 路径永远不会返回 HTML**（`initializer/web.go`） |
 | 21 | 登出接口同时注册了 `POST` 与 `GET /api/auth/logout`；前端产物里用的是 **POST**（`controller/auth.go`） |
 | 22 | token 存在进程内 `gcache`，**容器重启即全部失效**，需要重新登录；改 `APP_SECRET` 同理（`internal/utils/jwt.go`） |
+| 23 | 变量的「匹配正则」是**提取规则而非校验规则**：`FindString` 取最左匹配的子串，并**用它覆盖整个提交值**。填 `；` 而值输入 `1；2`，最终只会存 `；`。想原样保存要写 `^[\s\S]*$` 这类整体圈定的正则（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.1） |
 
 ---
 
