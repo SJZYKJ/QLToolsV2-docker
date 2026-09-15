@@ -15,6 +15,14 @@
 | 健康检查 | `GET /ping` → `pong` |
 | 运行期依赖 | **无**（数据库默认用内置 SQLite；不需要 Redis、不需要 Node、不需要 Nginx） |
 
+## 文档导航
+
+| 文档 | 什么时候看 |
+|------|------------|
+| **README.md**（本文） | 先看这个 —— 30 秒把服务跑起来 |
+| [DEPLOY.md](DEPLOY.md) | 完整手册 —— 部署方式、全部环境变量、离线内网、数据迁移、安全建议 |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | **出问题先查这里** —— 按「现象」组织的排错手册，含实战案例 |
+
 ---
 
 ## 30 秒部署
@@ -134,6 +142,13 @@ docker compose down                 # 停止（保留数据卷）
 docker compose pull && docker compose up -d   # 升级到最新镜像
 ```
 
+> **命名提醒**：`docker compose` 系列命令用**服务名** `qltools`；
+> `docker exec` / `docker inspect` 要用**容器名** `qltools_v2`。
+>
+> **升级不需要 GitHub**：镜像在 Docker Hub 上，`docker compose pull` 就够了。
+> 服务器连不上 GitHub 也能正常部署和升级，详见
+> [DEPLOY.md 方式 A4](DEPLOY.md) / [TROUBLESHOOTING.md 3.4](TROUBLESHOOTING.md)。
+
 **回滚**：把 `.env` 里的 `IMAGE_TAG` 改成之前构建产出的提交号标签
 （格式 `sha-<7位提交号>`）后重新 `docker compose up -d`。
 
@@ -170,9 +185,10 @@ QLToolsV2-docker/
 ├── src/                            # 服务端源码（含已内嵌的前端产物 web/dist）
 ├── configs/config.yaml             # 配置参考样例（容器不读它）
 ├── examples/                       # 提交数据的两条示例
-├── NOTICE.md                       # 第三方代码许可
+├── README.md                       # 入口文档（30 秒部署）
 ├── DEPLOY.md                       # 完整部署手册
-└── README.md
+├── TROUBLESHOOTING.md              # 排错手册
+└── NOTICE.md                       # 第三方代码许可
 ```
 
 容器内布局：
@@ -219,6 +235,9 @@ QLToolsV2-docker/
 - **脚本必须是 LF 换行**，CRLF 会让容器启动即报
   `/usr/bin/env: 'bash\r': No such file or directory`。
 - `/api/open/submit` 是**免登录写接口**，不要直接暴露到公网，建议加反代 + IP 白名单 + 限速。
+- **API 路径未匹配时返回的是 JSON，不是 HTML**：`{"code": 50001, "msg": "接口不存在: <方法> <路径>"}`。
+  如果你只看到一个光秃秃的 `Error` 提示，基本可以断定是**路径或 HTTP 方法写错了**，
+  而不是后端逻辑出错——打开浏览器 F12 的 Network 面板看那条请求的真实响应即可确认。
 
 ---
 

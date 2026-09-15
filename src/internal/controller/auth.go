@@ -46,7 +46,16 @@ func (ctrl *AuthController) AuthRouter(router *gin.RouterGroup) {
 
 // AuthRequiredRouter 认证相关路由注册（携带token）
 func (ctrl *AuthRequiredController) AuthRequiredRouter(router *gin.RouterGroup) {
-	router.GET("/logout", ctrl.Logout) // 用户登出
+	// 前端固定用 POST 调用登出（前端产物里是 Ht.post("/api/auth/logout")），
+	// Swagger 注解标注的也是 post，因此这里必须注册 POST。
+	//
+	// 历史问题：早期只注册了 GET，前端的 POST 请求匹配不到路由、落到 NoRoute，
+	// 而 NoRoute 会返回前端 index.html（HTTP 200 + HTML）。前端响应拦截器拿到的
+	// 是一段 HTML，解析不出 code 字段，于是弹出信息量为零的 "Error"。
+	//
+	// 同时保留 GET，兼容可能存在的旧脚本调用。
+	router.POST("/logout", ctrl.Logout) // 用户登出（前端实际调用）
+	router.GET("/logout", ctrl.Logout)  // 用户登出（兼容 GET 调用）
 }
 
 // GetCaptcha 生成算术验证码并返回ID与Base64图片

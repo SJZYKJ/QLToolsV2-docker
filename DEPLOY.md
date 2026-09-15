@@ -1,7 +1,26 @@
 # QLToolsV2 Docker 部署手册
 
 > 本手册覆盖：部署方式、文件清单、依赖清单、环境变量、逐步操作、数据持久化、排错与安全建议。
-> 只想快点跑起来 → 看 [README.md](README.md) 的「30 秒部署」。
+>
+> - 只想快点跑起来 → [README.md](README.md) 的「30 秒部署」
+> - 遇到报错 → [TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+
+## 目录
+
+| 章节 | 内容 |
+|------|------|
+| [一、这是什么](#一这是什么) | 项目定位与能力边界 |
+| [二、四种部署方式](#二四种部署方式) | A 拉镜像 / B 云端构建 / C 本地构建 / D 离线内网 |
+| [三、文件清单](#三文件清单) | 每个文件干什么、是否必需 |
+| [四、目录结构](#四目录结构) | 宿主机与容器内布局 |
+| [五、依赖清单](#五依赖清单) | 部署端 / 构建期 / 运行期依赖 |
+| [六、环境变量完整说明](#六环境变量完整说明) | 全部变量逐项解释 |
+| [七、部署步骤](#七部署步骤) | 从零到能提交数据的完整流程 |
+| [八、数据持久化与升级](#八数据持久化与升级) | 备份、换库、升级、回滚 |
+| [九、端口与接口速查](#九端口与接口速查) | 路由、响应体约定 |
+| [十、实现要点与已知行为](#十实现要点与已知行为) | 容易踩的隐性行为 |
+| [十一、排错](#十一排错) | 常见现象速查表 |
+| [十二、安全建议](#十二安全建议) | 上线前必做 |
 
 ---
 
@@ -81,6 +100,25 @@ cp .env.example .env
 docker compose up -d
 ```
 </details>
+
+**A4. 服务器上拿不到仓库文件怎么办（`git clone` 失败）**
+
+国内云主机访问 GitHub 常常超时或中断（`Failure when receiving data from the peer`）。
+**这不影响部署**——镜像在 Docker Hub 上，不依赖 GitHub。仓库文件按下面任一方式取：
+
+| 方式 | 命令 / 做法 | 适用 |
+|------|-------------|------|
+| 本地 scp | `scp docker-compose.yml .env.example root@<IP>:/root/QLToolsV2-docker/` | 本地已有仓库，**首选** |
+| 镜像加速 | `git clone --depth 1 https://ghfast.top/https://github.com/SJZYKJ/QLToolsV2-docker.git` | 服务器能出网的加速通道 |
+| 手工落文件 | 只写 `docker-compose.yml` + `.env` 两个文件即可，内容照抄本手册 | 完全拿不到文件时 |
+
+> **落文件时注意**：从 Markdown 代码块复制会把 ` ```bash ` 围栏一起带进去，
+> 导致 `docker compose up -d` 报 `yaml: line 2: mapping values are not allowed in this context`。
+> 写完务必校验：`docker compose config >/dev/null && echo "YAML OK"`。
+> 详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 的「3.1 docker-compose up -d 报 yaml 错」。
+
+> 更省事的做法：`docker compose pull && docker compose up -d` 就是全部的更新操作，
+> **日常升级完全不需要碰 GitHub**。
 
 ---
 
@@ -231,7 +269,9 @@ docker run --rm -v "$PWD/src:/src" -w /src golang:1.24-bookworm \
 | `examples/submit.sh` | 用 curl 提交一条数据（公开接口，免登录） | 可选 |
 | `examples/submit_to_qinglong.py` | 一键：登录 → 建面板 → 建变量 → 绑定 → 提交 | 可选 |
 | `NOTICE.md` | 第三方代码的许可与归属说明 | 推荐 |
-| `README.md` / `DEPLOY.md` | 快速上手 / 本文 | 推荐 |
+| `README.md` | **入口文档**：30 秒部署 + 跑起来之后要做什么 | 推荐 |
+| `DEPLOY.md` | 本文，完整部署手册 | 推荐 |
+| `TROUBLESHOOTING.md` | **排错手册**：按现象组织，含实战案例 | 推荐 |
 
 ---
 
@@ -265,8 +305,11 @@ QLToolsV2-docker/
 ├── entrypoint.sh
 ├── .env.example                     # -> cp .env.example .env（deploy.sh 自动做）
 ├── .dockerignore  .gitattributes  .gitignore
-├── NOTICE.md  DEPLOY.md  README.md
-└── .workbuddy/                      # 工作记录（与部署无关）
+├── README.md                        # 入口：30 秒部署
+├── DEPLOY.md                        # 本手册
+├── TROUBLESHOOTING.md               # 排错手册
+├── NOTICE.md                        # 第三方许可
+└── .workbuddy/                      # 工作记录（与部署无关，已在 .dockerignore 中）
 ```
 
 ### 4.2 容器内（镜像运行时）
@@ -623,10 +666,15 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 17 | 变量创建时 `quantity`、`mode`、`cdk_limit` 都是**必填**；新变量默认可能禁用（`internal/schema/env.go`） |
 | 18 | 控制 KEY（卡密）校验的是 `enable_key` 字段，不是 `cdk_limit=0`（`internal/schema/env.go`） |
 | 19 | 优雅停机有 10 秒超时，compose 里 `stop_grace_period` 设了 15 秒留余量 |
+| 20 | **未匹配路由会分流**：非 `/api/` 且不含 `.` 的路径交给前端 `index.html`（SPA history 模式，HTTP 200）；`/api/*` 未匹配则返回 JSON `{"code":50001,"msg":"接口不存在: <方法> <路径>"}`。**API 路径永远不会返回 HTML**（`initializer/web.go`） |
+| 21 | 登出接口同时注册了 `POST` 与 `GET /api/auth/logout`；前端产物里用的是 **POST**（`controller/auth.go`） |
+| 22 | token 存在进程内 `gcache`，**容器重启即全部失效**，需要重新登录；改 `APP_SECRET` 同理（`internal/utils/jwt.go`） |
 
 ---
 
 ## 十一、排错
+
+> 下表是速查。**完整版（含排查思路、命令与实战案例）见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md)。**
 
 | 现象 | 原因与处理 |
 |------|------------|
@@ -646,6 +694,11 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 构建很慢 | 首次要 `go mod download`。确认 `GOPROXY` 用的是 `https://goproxy.cn`；若已做 vendor 可完全离线 |
 | 构建报 `requires go >= 1.24.x` | 镜像内 Go 版本偏低。Dockerfile 已设 `GOTOOLCHAIN=auto` 兜底自动拉取匹配工具链 |
 | `deploy.sh` 说 Docker 守护进程未运行 | 启动 Docker Desktop / `systemctl start docker` |
+| 页面只弹一个光秃秃的 **`Error`**，没有任何信息 | 请求大概率**没匹配到路由**（路径或 HTTP 方法不对）。`NoRoute` 会把未匹配路径交给前端 `index.html`（HTTP 200 + HTML），前端拦截器解析不出 `code` 字段就只弹 `Error`。F12 → Network 看该请求的**状态码与响应体**；若是 HTML 说明是路由问题。已加固：`/api/*` 未匹配时现在返回 `{"code":50001,"msg":"接口不存在: ..."}` |
+| 点「退出登录」报 `Error` | 历史 bug：前端用 `POST /api/auth/logout`，后端只注册了 GET。已修复（后端补上 POST）。**拉最新镜像即可**：`docker compose pull && docker compose up -d` |
+| `docker compose up -d` 报 `yaml: line 2: mapping values are not allowed in this context` | `docker-compose.yml` 第 1 行不是 `services:`，多半是复制代码块时把 ` ```bash ` 围栏一起粘进去了。`head -5` 确认后用 `docker compose config` 校验 |
+| 改了 `.env` 但容器里没生效 | `.env` 只是 compose 的**变量替换源**，变量必须在 compose 的 `environment:` 里显式映射；且要 `docker compose up -d` 重建容器。用 `docker exec <容器> env \| grep QLTOOLS` 确认 |
+| 管理员密码明明改对了却登录失败 | 密码里含 `$ " ' #` 等字符会被 compose 变量替换吃掉。**只用字母和数字** |
 
 ---
 
