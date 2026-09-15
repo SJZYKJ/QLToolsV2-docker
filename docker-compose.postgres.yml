@@ -4,7 +4,7 @@
 #   一键部署：
 #     ./scripts/deploy.sh postgres
 #
-#   上游 internal/data/client.go 对 postgres 分支的 DSN 是：
+#   src/internal/data/client.go 对 postgres 分支的 DSN 是：
 #       host=... port=... user=... password=... dbname=... <db.config>
 #   db.config 需要 libpq 风格参数，entrypoint 已默认填 sslmode=disable。
 #   切勿沿用 MySQL 的 "charset=utf8mb4&parseTime=True&loc=Local"，

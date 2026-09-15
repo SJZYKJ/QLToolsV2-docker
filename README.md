@@ -1,167 +1,84 @@
-# QLToolsV2 · Docker 部署（提交环境变量到青龙面板）
+# QLToolsV2 · Docker 部署
 
-基于上游 [nuanxinqing123/QLToolsV2](https://github.com/nuanxinqing123/QLToolsV2) 的
-**自包含 Docker 部署方案** —— 上游源码已内嵌到 `upstream/`，
-**构建不再依赖上游仓库是否存活**，并且支持一键部署与推送到自己的 Docker Hub。
+青龙面板的**环境变量提交 / 管理中间件**（Go + Gin + Ent ORM）。
 
-QLToolsV2 是「青龙面板的环境变量第三方提交 / 管理中间件」（Go + Gin + Ent ORM）。
-它把外部提交的环境变量，按「变量 → 面板」的绑定关系，**自动轮询分发写入一台或多台
-青龙面板的 `/open/envs`**。
+它做一件事：把外部提交上来的环境变量值，按「变量 → 面板」的绑定关系，
+**自动轮询分发并写入一台或多台青龙面板的 `/open/envs`**。
 
-> 上游仓库**没有 Dockerfile**（其 CI 引用了 `./Dockerfile` 但文件并不存在），
-> 且项目已废弃。本目录补齐了完整可用的构建与编排文件，并把源码锁定内嵌。
->
-> **完整说明见 [DEPLOY.md](DEPLOY.md)** ｜ **上游来源与许可证见 [UPSTREAM.md](UPSTREAM.md)**
+本仓库是**开箱即用的容器化版本**：镜像已构建并发布，部署只需拉镜像 + 起容器。
+
+| | |
+|---|---|
+| 镜像 | `chungg/qltoolsv2:latest` |
+| 平台 | `linux/amd64` |
+| 端口 | `1500` |
+| 健康检查 | `GET /ping` → `pong` |
+| 运行期依赖 | **无**（数据库默认用内置 SQLite；不需要 Redis、不需要 Node、不需要 Nginx） |
 
 ---
 
-## 快速开始
+## 30 秒部署
 
-### 情况一：本机已经装了 Docker
-
-```bash
-./scripts/deploy.sh
-```
-
-脚本会自动生成 `.env`（含随机 `APP_SECRET`）、构建镜像、启动容器、等待健康检查，
-最后打印访问地址。首次构建约需几分钟（下载 Go 依赖）。
-
-### 情况二：本机没有 Docker（Windows 上很常见）→ 走云端构建
-
-**不用装 Docker、不用 WSL2、不用重启系统。** 把本目录推到一个 GitHub 仓库，
-在仓库 `Settings → Secrets and variables → Actions` 里加两个 Secret：
-
-| 名称 | 值 |
-|------|-----|
-| `DOCKERHUB_USERNAME` | 你的 Docker Hub 用户名 |
-| `DOCKERHUB_TOKEN` | 在 https://hub.docker.com/settings/security 生成的 Access Token（不要用账号密码） |
-
-然后到仓库 `Actions` 页面点 `Run workflow`，几分钟后镜像就出现在 Docker Hub 上了。
-之后在任何机器上把 `.env` 里的 `IMAGE_REPO` 填成 `你的用户名/qltoolsv2`，
-执行 `./scripts/deploy.sh` 即可一键部署。
-
-**一条命令做完（本机没装 Git 时尤其推荐）**——建仓库、推送、写 Secret、触发构建全自动：
+### 最简：一条 `docker run`
 
 ```bash
-export GH_TOKEN=ghp_xxxxxxxxxxxx     # GitHub 令牌，需 repo + workflow 权限
-export DOCKERHUB_USERNAME=你的用户名
-export DOCKERHUB_TOKEN=dckr_pat_xxxxxxxx
-./scripts/github-bootstrap.sh
+docker run -d --name qltools \
+  -p 1500:1500 \
+  -v qltools_data:/app/data \
+  -e APP_SECRET="$(openssl rand -base64 48)" \
+  --restart unless-stopped \
+  chungg/qltoolsv2:latest
 ```
 
-详细步骤与原理见 [DEPLOY.md](DEPLOY.md) 的「路线 A」。
-
-> **✅ 本方案已完成一次真实云端构建**（2026-09-14）：
-> 镜像 `chungg/qltoolsv2:latest`，摘要 `sha256:0eee0923f16a...`，平台 `linux/amd64`，
-> 构建日志 https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34829239577
->
-> 部署端直接用它即可（`.env` 里已默认填好 `IMAGE_REPO=chungg/qltoolsv2`）：
->
-> ```bash
-> ./scripts/deploy.sh --pull
-> ```
-
-验证：
-
-```bash
-curl http://127.0.0.1:1500/ping    # 期望: pong
-```
-
-然后打开 `http://<服务器IP>:1500`。
-
-<details>
-<summary>不使用脚本的等价手工命令</summary>
+### 推荐：用 compose（便于后续改配置、切数据库）
 
 ```bash
 cp .env.example .env      # 至少改掉 APP_SECRET
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+docker compose up -d
 ```
-</details>
+
+或者直接跑部署脚本，它会自动生成 `.env`（含随机 `APP_SECRET`）、拉镜像、
+启动容器、等待健康检查通过，最后打印访问地址：
+
+```bash
+./scripts/deploy.sh --pull
+```
+
+### 验证
+
+```bash
+curl http://127.0.0.1:1500/ping     # 期望输出：pong
+```
+
+然后浏览器打开 `http://<服务器IP>:1500`。
 
 ---
 
-## 三种部署方式
+## 跑起来之后
 
-### 1. 本地一键部署
+### 1) 注册管理员（只在第一次做）
 
-```bash
-./scripts/deploy.sh                    # SQLite（默认）
-./scripts/deploy.sh mysql              # 应用 + MySQL 8
-./scripts/deploy.sh postgres           # 应用 + PostgreSQL 16
-./scripts/deploy.sh --pull             # 强制拉镜像（不构建）
-./scripts/deploy.sh --build            # 强制本地源码构建
-```
+**系统只允许注册一个账号，首个注册者即为管理员。** 注册需填图形验证码（算术题，点图刷新）。
+登录同样需要验证码。
 
-### 2. 构建并推送到自己的 Docker Hub
+> 忘记密码只能清库：删掉数据库里的 `users` 表记录后重新注册。
 
-推一次，之后所有部署端都不再需要源码和编译。
+### 2) 在青龙面板侧准备 Open API 凭证
 
-```bash
-docker login
-# 编辑 .env：IMAGE_REPO=你的用户名/qltoolsv2
-./scripts/build-push.sh --push
+青龙面板 → **系统设置 → 应用设置 → 新建应用** → 得到 `client_id` 与 `client_secret`。
 
-# 多架构（amd64 + arm64）
-./scripts/build-push.sh --platforms linux/amd64,linux/arm64 --push
-```
+> 这组凭证是 QLTools 连接青龙用的身份，**不是**青龙的登录账号密码。
 
-推送后，部署端只要 `.env` 里填了 `IMAGE_REPO`，`./scripts/deploy.sh` 就会自动拉取镜像启动。
+### 3) 在 QLTools 后台配置面板与变量
 
-### 3. 完全离线 / 内网
-
-```bash
-# 导出镜像搬运
-./scripts/build-push.sh
-docker save qltoolsv2:latest -o qltoolsv2.tar
-# 内网机器
-docker load -i qltoolsv2.tar && ./scripts/deploy.sh
-
-# 若连 Go 模块代理都不能访问，先生成 vendor/（构建将不再联网）
-docker run --rm -v "$PWD/upstream:/src" -w /src golang:1.24-bookworm \
-  sh -c 'go mod download && go mod vendor'
-```
-
----
-
-## 目录结构
-
-```
-QLToolsV2-docker/
-├── upstream/                       # ★ 内嵌上游源码（锁定提交，含前端产物）
-├── scripts/
-│   ├── deploy.sh                   # 一键部署
-│   ├── build-push.sh               # 构建 + 推送自有镜像
-│   └── fetch-upstream.sh           # 更新上游源码（唯一需要访问上游的入口）
-├── Dockerfile                      # 从 upstream/ 编译，运行期 debian-slim
-├── entrypoint.sh                   # 生成 config.yaml；等待数据库就绪后启动
-├── docker-compose.yml              # SQLite（零外部依赖）
-├── docker-compose.mysql.yml        # 应用 + MySQL 8
-├── docker-compose.postgres.yml     # 应用 + PostgreSQL 16
-├── docker-compose.build.yml        # 本地构建 override
-├── .env.example                    # 环境变量样例
-├── UPSTREAM.md                     # 上游来源、锁定提交、许可证
-├── DEPLOY.md                       # ★ 部署手册
-└── examples/                       # 提交数据的两条示例
-```
-
----
-
-## 跑起来之后要做的事
-
-### 1) 首次注册管理员
-
-**系统只允许注册一个账号，首个注册者即为管理员。** 注册需填图形验证码（算术题）。
-
-### 2) 准备青龙 Open API 凭证
-
-青龙面板 → **系统设置 → 应用设置 → 新建应用** → 拿到 `client_id` / `client_secret`。
-
-### 3) 在 QLTools 后台配置
-
-- **面板管理 → 新增面板**：填青龙地址（如 `http://1.2.3.4:5700`）+ `client_id` + `client_secret`。
+- **面板管理 → 新增面板**：填青龙地址（如 `http://1.2.3.4:5700`）+ `client_id` + `client_secret`，
+  可点「测试连接」验证。
 - **变量管理 → 新增变量**：填变量名（如 `JD_COOKIE`）、`quantity`、`mode`、`cdk_limit`
-  （必填，不启用卡密填 `0`；是否启用 KEY 校验看 `enable_key`）。
-- 在变量详情里**绑定到已启用的面板**，并确认变量本身是启用状态。
+  —— 这四个都是**必填**；不启用卡密就填 `0`。
+  **是否启用 KEY 校验由 `enable_key` 控制，不是 `cdk_limit`。**
+- 在变量详情里**绑定到已启用的面板**，并确认变量本身是「启用」状态。
+
+> 变量与面板只要有一方是禁用状态，提交就会返回 `submitted_to = 0`。
 
 ### 4) 提交数据
 
@@ -187,16 +104,120 @@ ENV_VALUE="pt_key=xxx;pt_pin=yyy;" \
 
 ---
 
+## 常用运维
+
+```bash
+docker compose logs -f qltools      # 看日志
+docker compose restart qltools      # 重启
+docker compose down                 # 停止（保留数据卷）
+docker compose pull && docker compose up -d   # 升级到最新镜像
+```
+
+**回滚**：把 `.env` 里的 `IMAGE_TAG` 改成之前构建产出的提交号标签
+（格式 `sha-<7位提交号>`）后重新 `docker compose up -d`。
+
+**切换数据库**（SQLite → MySQL / PostgreSQL）：
+
+```bash
+./scripts/deploy.sh mysql       # 应用 + MySQL 8
+./scripts/deploy.sh postgres    # 应用 + PostgreSQL 16
+```
+
+数据表由程序在首次启动时**自动迁移创建**，不需要手工执行 SQL。
+从 SQLite 换到外部数据库属于**换库**，原数据不会自动迁移。
+
+> ⚠️ `docker compose down -v` 会连数据卷一起删除，**数据全部丢失**，慎用。
+
+---
+
+## 目录结构
+
+```
+QLToolsV2-docker/
+├── Dockerfile                      # 多阶段构建：src/ 编译 -> debian-slim 运行
+├── entrypoint.sh                   # 生成 config.yaml；等待数据库就绪后启动
+├── docker-compose.yml              # SQLite（零外部依赖）
+├── docker-compose.mysql.yml        # 应用 + MySQL 8
+├── docker-compose.postgres.yml     # 应用 + PostgreSQL 16
+├── docker-compose.build.yml        # 本地构建用的 override（拉镜像部署不需要）
+├── .env.example                    # 环境变量样例
+├── scripts/
+│   ├── deploy.sh                   # 一键部署
+│   ├── build-push.sh               # 构建镜像并推送到镜像仓库
+│   ├── github-bootstrap.sh         # 建仓库 → 推送 → 配 Secret → 触发云端构建
+│   └── gh-set-secret.py            # 上面脚本的辅助程序
+├── src/                            # 服务端源码（含已内嵌的前端产物 web/dist）
+├── configs/config.yaml             # 配置参考样例（容器不读它）
+├── examples/                       # 提交数据的两条示例
+├── NOTICE.md                       # 第三方代码许可
+├── DEPLOY.md                       # 完整部署手册
+└── README.md
+```
+
+容器内布局：
+
+```
+/app
+├── QLToolsV2            # 二进制（前端已通过 go:embed 打包进去）
+├── entrypoint.sh
+├── configs/config.yaml  # 每次启动由 entrypoint.sh 生成
+└── data/                # 卷挂载点 -> 命名卷 qltools_data
+    └── ql_tools_v2.db   # SQLite 模式下的数据库文件
+```
+
+---
+
+## 环境变量速查
+
+最常改的几个（完整表格见 [DEPLOY.md](DEPLOY.md) 第六节）：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `HOST_PORT` | `1500` | 宿主机映射端口，被占用时改掉 |
+| `APP_SECRET` | `QLToolsV2` | **JWT 签名密钥，生产必须改**（`deploy.sh` 会自动生成随机值） |
+| `DB_TYPE` | `sqlite` | `sqlite` / `mysql` / `postgres` |
+| `TZ` | `Asia/Shanghai` | 时区 |
+| `APP_MODE` | `release` | 改成 `debug` 才会开放 `/swagger/index.html` |
+| `IMAGE_REPO` | `chungg/qltoolsv2` | 想用自己构建的镜像时改这里 |
+| `IMAGE_TAG` | `latest` | 也可填 `sha-<提交号>` 精确锁定并支持回滚 |
+
+---
+
 ## 需要知道的几件事
 
-- **源码已内嵌**：`upstream/` 锁定在上游某个具体提交，构建可复现，且与上游是否存活无关。
-- **上游是 Apache-2.0**，允许再分发；推送到你自己的 Docker Hub 是合规的。
-- **响应体统一为** `{"code": 20000, "msg": "Success", "data": {...}}`，成功码是 **20000**。
-- **`APP_ADDRESS` 实际不生效**：上游 HTTP 服务只用 `port`，容器内始终监听 `0.0.0.0`。
+- **响应体统一为** `{"code": 20000, "msg": "Success", "data": {...}}`，成功码是 **20000**，不是 200 或 0。
+- **`APP_ADDRESS` 不起作用**：HTTP 服务只使用 `port`，进程在容器内始终监听 `0.0.0.0`，
+  端口映射不受它影响。
 - **不需要 Redis**：缓存是进程内 `gcache`，`config.yaml` 里的 `cache` 段不生效。
-- **不需要 Node.js**：前端已通过 `//go:embed all:dist` 打进二进制。
+- **不需要 Node.js**：前端产物已随源码提供，并通过 `go:embed` 打进二进制。
 - **PostgreSQL 的 `DB_CONFIG` 必须用 libpq 风格**（如 `sslmode=disable`），
-  不能沿用 MySQL 的 `charset=utf8mb4&...`。
-- **脚本必须是 LF 换行**，CRLF 会导致容器启动即失败。
+  不能沿用 MySQL 的 `charset=utf8mb4&...`，否则连接直接失败。
+- **脚本必须是 LF 换行**，CRLF 会让容器启动即报
+  `/usr/bin/env: 'bash\r': No such file or directory`。
+- `/api/open/submit` 是**免登录写接口**，不要直接暴露到公网，建议加反代 + IP 白名单 + 限速。
 
-更多细节与排错见 **[DEPLOY.md](DEPLOY.md)**。
+---
+
+## 从源码自行构建（可选）
+
+只有当你要改代码、或想构建 ARM 等其他架构的镜像时才需要。
+
+```bash
+# 本机有 Docker
+./scripts/deploy.sh --build                       # 本地构建并启动
+./scripts/build-push.sh --push                    # 构建并推送到自己的镜像仓库
+./scripts/build-push.sh --platforms linux/amd64,linux/arm64 --push   # 多架构
+
+# 本机没有 Docker —— 用 GitHub Actions 云端构建
+export GH_TOKEN=ghp_xxxx              # GitHub 令牌，需 repo + workflow 权限
+export DOCKERHUB_USERNAME=你的用户名
+export DOCKERHUB_TOKEN=dckr_pat_xxxx  # Docker Hub Access Token
+./scripts/github-bootstrap.sh         # 建仓库 → 推送 → 配 Secret → 触发构建
+```
+
+源码在 `src/`（306 个文件，含已入库的前端产物 `web/dist`），构建期只下载 Go 模块，
+不访问任何代码托管站点。若需**完全离线构建**，见 [DEPLOY.md](DEPLOY.md) 的「完全离线 / 内网部署」。
+
+---
+
+© 部分源码为第三方开源项目，采用 Apache License 2.0，详见 [NOTICE.md](NOTICE.md)。

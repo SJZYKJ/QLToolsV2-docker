@@ -2,7 +2,7 @@
 # 本地构建覆盖文件（override）
 #
 #   本文件不单独使用，而是叠加到某个 docker-compose*.yml 上，
-#   为 qltools 服务补上 build 段，从而用仓库内嵌的 upstream/ 源码构建镜像。
+#   为 qltools 服务补上 build 段，从而用仓库自带的 src/ 源码构建镜像。
 #
 #   用法（由 scripts/deploy.sh --build 自动调用）：
 #     docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build

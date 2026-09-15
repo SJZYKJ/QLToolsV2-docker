@@ -1,7 +1,0 @@
-repo=https://github.com/nuanxinqing123/QLToolsV2
-ref=master
-resolved=local:upstream.tar.gz
-fetched_at=2026-09-14T09:02:04Z
-files=306
-web_dist_files=158
-license=Apache-2.0

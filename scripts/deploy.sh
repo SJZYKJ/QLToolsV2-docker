@@ -7,11 +7,11 @@
 #   ./scripts/deploy.sh postgres           # 应用 + PostgreSQL 16
 #
 #   ./scripts/deploy.sh --pull             # 强制从镜像仓库拉取（不构建）
-#   ./scripts/deploy.sh --build            # 强制用本地 upstream 源码构建
+#   ./scripts/deploy.sh --build            # 强制用仓库自带 src/ 源码构建
 #   ./scripts/deploy.sh mysql --no-wait    # 不等待健康检查
 #
 #   首次运行会自动从 .env.example 生成 .env，并写入随机 APP_SECRET。
-#   默认行为（auto）：.env 里填了 IMAGE_REPO 就拉镜像，否则用本地源码构建。
+#   默认行为（auto）：.env 里填了 IMAGE_REPO 就拉镜像，否则用本地 src/ 源码构建。
 # ==============================================================================
 set -euo pipefail
 
@@ -25,7 +25,7 @@ usage() {
 
   位置参数   数据库方案，默认 sqlite
   --pull     强制从镜像仓库拉取镜像后启动（不构建）
-  --build    强制使用本地 upstream 源码构建后启动
+  --build    强制使用仓库自带 src/ 源码构建后启动
   --no-wait  启动后不等待健康检查
   -h, --help 显示本帮助
 
@@ -137,12 +137,12 @@ if [ "$MODE" = "pull" ]; then
   echo ">> 拉取镜像 ${IMAGE_REPO}:${IMAGE_TAG}"
   if ! "${DC[@]}" -f "$COMPOSE_FILE" pull qltools; then
     echo "!! 拉取失败（镜像不存在、未 docker login，或网络不通）" >&2
-    if [ -f upstream/go.mod ]; then
+    if [ -f src/go.mod ]; then
       echo ">> 回退为本地源码构建" >&2
       MODE="build"
     else
-      echo "!! 本地没有 upstream 源码，无法回退构建。" >&2
-      echo "   请检查 IMAGE_REPO，或先执行 ./scripts/fetch-upstream.sh" >&2
+      echo "!! 本地没有 src/ 源码，无法回退构建。" >&2
+      echo "   请检查 IMAGE_REPO 是否写对。" >&2
       exit 1
     fi
   fi
@@ -150,9 +150,8 @@ fi
 
 # ---------------- 4. 启动 ----------------
 if [ "$MODE" = "build" ]; then
-  [ -f upstream/go.mod ] || {
-    echo "!! 缺少内嵌源码 upstream/go.mod" >&2
-    echo "   请先执行：./scripts/fetch-upstream.sh" >&2
+  [ -f src/go.mod ] || {
+    echo "!! 缺少源码 src/go.mod，本仓库不完整。" >&2
     exit 1
   }
   [ -f docker-compose.build.yml ] || { echo "!! 缺少 docker-compose.build.yml" >&2; exit 1; }

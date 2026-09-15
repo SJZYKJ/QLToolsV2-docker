@@ -3,10 +3,10 @@
 """
 QLToolsV2 一键脚本：确保面板存在 -> 确保变量存在并启用 -> 绑定面板 -> 提交数据到青龙
 
-接口契约全部按上游源码核对（nuanxinqing123/QLToolsV2@master）：
+接口契约（与 src/ 中的实现一致）：
   * 统一响应体为 {"code": 20000, "msg": "Success", "data": {...}}
     成功码是 20000，不是 200 / 0
-    （internal/pkg/response/code.go: CodeSuccess ResCode = 20000）
+    （src/internal/pkg/response/code.go: CodeSuccess ResCode = 20000）
   * 管理类接口（panel / env）需要 JWT，请求头 Authorization: Bearer <access_token>
   * 提交接口 POST /api/open/submit 免登录，但带更严格的令牌桶限速
   * 分页列表数据在 data.list，总数在 data.total
@@ -15,7 +15,7 @@ QLToolsV2 一键脚本：确保面板存在 -> 确保变量存在并启用 -> �
   1) 直接给 QLTOOLS_TOKEN          —— 从浏览器登录后 F12 复制 access_token
   2) 给 QLTOOLS_USERNAME / QLTOOLS_PASSWORD
      —— 脚本会拉取算术验证码保存为 captcha.png，你在终端输入答案后自动登录
-        （登录与注册都必须通过验证码，这是上游 auth 控制器的强制要求）
+        （登录与注册都必须通过验证码，这是服务端的强制要求）
 
 环境变量：
   QLTOOLS_URL        QLToolsV2 地址，默认 http://127.0.0.1:1500

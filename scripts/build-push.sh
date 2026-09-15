@@ -86,14 +86,12 @@ if [ "$DRY_RUN" != "1" ]; then
 fi
 
 # 源码检查
-if [ ! -f upstream/go.mod ]; then
-  echo "!! 缺少内嵌源码 upstream/go.mod" >&2
-  echo "   请先执行：./scripts/fetch-upstream.sh" >&2
-  echo "   （如果上游已不可访问，请用 --from 指定一个本地源码包）" >&2
+if [ ! -f src/go.mod ]; then
+  echo "!! 缺少源码 src/go.mod，本仓库不完整" >&2
   exit 1
 fi
-if [ ! -d upstream/web/dist ] || [ "$(find upstream/web/dist -type f 2>/dev/null | wc -l | tr -d ' ')" = "0" ]; then
-  echo "!! 警告：upstream/web/dist 为空，成品镜像可能没有前端界面" >&2
+if [ ! -d src/web/dist ] || [ "$(find src/web/dist -type f 2>/dev/null | wc -l | tr -d ' ')" = "0" ]; then
+  echo "!! 警告：src/web/dist 为空，成品镜像可能没有前端界面" >&2
 fi
 
 if [ -z "$IMAGE_REPO" ]; then
@@ -102,7 +100,7 @@ if [ -z "$IMAGE_REPO" ]; then
   [ "$PUSH" = "1" ] && { echo "!! --push 需要先在 .env 里设置 IMAGE_REPO=你的用户名/qltoolsv2" >&2; exit 1; }
 fi
 
-echo "   源码      ：upstream/  $( [ -f upstream/.upstream-rev ] && grep -E '^resolved=' upstream/.upstream-rev | cut -d= -f2 || echo '(未记录版本)' )"
+echo "   源码      ：src/  $( [ -f src/.source-rev ] && grep -E '^original_commit=' src/.source-rev | cut -d= -f2 || echo '(未记录版本)' )"
 echo "   镜像      ：${IMAGE_REPO}:${IMAGE_TAG}"
 echo "   平台      ：${PLATFORMS:-当前平台}"
 echo "   GOPROXY   ：${GOPROXY}"

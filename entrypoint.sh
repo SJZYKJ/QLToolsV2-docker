@@ -3,13 +3,13 @@
 # QLToolsV2 容器入口脚本
 #
 #   1) 依据环境变量生成 config.yaml
-#      —— 上游 internal/app/initializer/viper.go 读不到配置文件会 panic，
+#      —— 程序读不到配置文件会直接 panic（见 src/internal/app/initializer/viper.go），
 #         所以这个文件是"必须存在"的，不能省略。
 #   2) 使用 MySQL / PostgreSQL 时，先等待数据库端口就绪
 #   3) 以 -config 参数启动 QLToolsV2
-#      —— 上游 internal/app/bootstrap.go 定义了 -config / -c 两个参数
+#      —— 程序支持 -config / -c 两个参数（见 src/internal/app/bootstrap.go）
 #
-# 环境变量与上游配置项的对应关系见 DEPLOY.md
+# 环境变量与配置项的对应关系见 DEPLOY.md
 # ==============================================================================
 set -euo pipefail
 
@@ -29,7 +29,7 @@ else
 
   # ----------------------------------------------------------------------------
   # 按数据库类型归一化连接参数
-  # 依据上游 internal/data/client.go 的 DSN 拼装逻辑：
+  # 依据 src/internal/data/client.go 的 DSN 拼装逻辑：
   #   mysql    -> "user:pass@tcp(host:port)/name?config"
   #   postgres -> "host=... port=... user=... password=... dbname=... config"
   #   sqlite   -> name + "?_fk=1"        （只用 name，其余字段全部忽略）
@@ -93,8 +93,8 @@ db:
   log-zap: false
   log-level: "info"
 
-# 缓存当前是进程内 gcache（见 internal/app/initializer/cache.go），
-# 此段不生效，保留仅为兼容上游配置结构，无需 Redis。
+# 缓存当前是进程内 gcache（见 src/internal/app/initializer/cache.go），
+# 此段不生效，保留仅为兼容配置结构，无需 Redis。
 cache:
   host: "127.0.0.1"
   port: 6379

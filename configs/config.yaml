@@ -4,8 +4,8 @@
 #   /app/entrypoint.sh 会在每次启动时依据环境变量重新生成
 #   /app/configs/config.yaml，本文件仅用于说明各配置项的含义与结构。
 #
-# 结构完全对齐上游 configs/config.example.yaml
-#   （internal/app/config/config.go: Configuration{App, DB, Cache}）
+# 结构对齐 src/configs/config.example.yaml
+#   （src/internal/app/config/config.go: Configuration{App, DB, Cache}）
 #
 # 想让容器直接使用你自己的配置文件：把本文件挂载到 /app/configs/config.yaml
 # 并设置环境变量 KEEP_CONFIG=1。
@@ -15,7 +15,7 @@ app:
   # 运行模式：debug / release / test
   # release -> gin.ReleaseMode；debug 才会额外暴露 /swagger/*any
   mode: "release"
-  # 注意：上游 internal/app/bootstrap.go 里启动 HTTP 服务用的是
+  # 注意：src/internal/app/bootstrap.go 里启动 HTTP 服务用的是
   # fmt.Sprintf(":%d", port)，只取了端口，所以 address 实际不生效，
   # 进程始终监听 0.0.0.0。此项保留仅为兼容配置结构。
   address: "0.0.0.0"
@@ -53,7 +53,7 @@ db:
   log-level: "info"
 
 # ============================================================================
-# 缓存：当前版本使用进程内 gcache（internal/app/initializer/cache.go：
+# 缓存：当前版本使用进程内 gcache（src/internal/app/initializer/cache.go：
 # gcache.New(256).ARC().Build()），不依赖 Redis。本段不生效，保留以兼容结构。
 # ============================================================================
 cache:

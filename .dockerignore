@@ -1,17 +1,17 @@
 # ==============================================================================
 # 构建上下文排除规则 —— ⚠ 改动前请先读完这段
 #
-#   upstream/ 是镜像构建的**唯一**源码来源，下面这些必须保留：
+#   src/ 是镜像构建的**唯一**源码来源，下面这些必须保留：
 #
 #     · 全部 Go 源码：cmd/  internal/  docs/  web/  configs/
-#       ↳ internal/app/initializer/router.go 里空白导入了 .../docs 包
+#       ↳ src/internal/app/initializer/router.go 里空白导入了 .../docs 包
 #         （_ "github.com/nuanxinqing123/QLToolsV2/docs"），
 #         一旦排除 docs/ 就会编译失败。这个坑踩过一次。
-#     · 前端产物 web/dist/（web/embed.go 中 //go:embed all:dist）
+#     · 前端产物 web/dist/（src/web/embed.go 中 //go:embed all:dist）
 #     · go.mod / go.sum
 #
 #   排除目录一律用前导斜杠（如 /scripts/）限定为根目录，
-#   或写成 upstream/xxx 全路径，避免误伤 upstream/ 下的同名目录。
+#   或写成 src/xxx 全路径，避免误伤 src/ 下的同名目录。
 # ==============================================================================
 
 # ---- 版本控制、本地环境与工具数据 ----
@@ -32,15 +32,15 @@
 /examples/
 /scripts/
 
-# ---- upstream/ 中与编译无关的部分 ----
-upstream/.github/
-upstream/scripts/
-upstream/Makefile
-upstream/README.MD
-upstream/.goreleaser.yaml
-upstream/.gitignore
-upstream/.gitattributes
-upstream/.dockerignore
+# ---- src/ 中与编译无关的部分 ----
+src/.github/
+src/scripts/
+src/Makefile
+src/README.MD
+src/.goreleaser.yaml
+src/.gitignore
+src/.gitattributes
+src/.dockerignore
 
 # ---- 杂项 ----
 *.log

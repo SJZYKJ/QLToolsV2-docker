@@ -1,47 +1,95 @@
 # QLToolsV2 Docker 部署手册
 
-> 本文是这套**自包含、不依赖上游仓库**的 Docker 部署方案的完整交付说明：
-> 部署路线、文件清单、依赖清单、环境变量、逐步操作、排错，以及「与上游源码逐行核对」的结论。
-> 只想快点跑起来 → 看 [README.md](README.md) 的快速开始。
+> 本手册覆盖：部署方式、文件清单、依赖清单、环境变量、逐步操作、数据持久化、排错与安全建议。
+> 只想快点跑起来 → 看 [README.md](README.md) 的「30 秒部署」。
 
 ---
 
 ## 一、这是什么
 
-上游项目 [nuanxinqing123/QLToolsV2](https://github.com/nuanxinqing123/QLToolsV2) 是
-**青龙面板的环境变量第三方提交 / 管理中间件**（Go + Gin + Ent ORM，已停止维护）。
+**QLToolsV2** 是青龙面板的**环境变量提交 / 管理中间件**（Go + Gin + Ent ORM）。
 
 它做一件事：把外部提交上来的环境变量值，按「变量 → 面板」的绑定关系，
-自动轮询分发并写入一台或多台青龙面板的 `/open/envs`。
+**自动轮询分发并写入一台或多台青龙面板的 `/open/envs`**。
 
-**为什么要单独做一套部署文件：**
+典型的用法是：外部脚本或第三方服务用一条 HTTP 请求把环境变量（如 `JD_COOKIE`）
+提交给本服务，本服务再去更新所有绑定的青龙面板，省去逐台面板手工粘贴。
 
-1. 上游仓库**根目录没有 Dockerfile** —— 它的 CI 里写了 `file: ./Dockerfile`，
-   但该文件实际并不存在，官方镜像构建跑不通。
-2. 上游已废弃，**随时可能被归档或删除** —— 如果构建时去 `git clone`，将来必然失败。
+本仓库提供的是**开箱即用的容器化发行版**：
 
-因此本方案做了两件事：补齐构建与编排文件，并把**上游源码内嵌到 `upstream/`**，
-让构建过程与上游仓库是否存活彻底解耦。
+- 镜像已构建并发布（`chungg/qltoolsv2`），部署端**只需拉镜像**即可运行；
+- 源码随仓库提供在 `src/`（含已内嵌的前端产物），构建**不依赖任何外部代码托管站点**；
+- 运行期**没有额外依赖**——默认用内置 SQLite，不需要 Redis、Node.js 或 Nginx。
 
 ---
 
-## 二、四种部署路线
+## 二、四种部署方式
 
 先明确概念：**「构建」**是把源码编译成镜像，**「部署」**是把镜像跑起来。
-构建完推到镜像仓库，之后部署端就再也不需要源码、也不需要联网编译。
+镜像已发布，所以绝大多数情况下你只需要「部署」。
 
-| 你机器的情况 | 推荐路线 |
-|--------------|----------|
-| **没有 Docker，也不想装**（Windows 上很常见） | **路线 A · 云端构建** ← 推荐 |
-| 本机 / 服务器上已经有 Docker | 路线 B · 本机一键部署 |
-| 有 Docker，且要把镜像存进自己的仓库 | 路线 C · 本地构建后推送 |
-| 内网隔离、完全不能联网 | 路线 D · 完全离线 |
+| 你的情况 | 推荐方式 |
+|----------|----------|
+| 只想把服务跑起来 | **方式 A · 拉取已发布镜像** ← 推荐 |
+| 本机没有 Docker，但要自己改代码重新构建 | 方式 B · 云端构建后推送 |
+| 本机有 Docker，且要改代码 | 方式 C · 本机从源码构建 |
+| 内网隔离、完全不能联网 | 方式 D · 完全离线 / 内网 |
 
-### 路线 A · 云端构建并推送到 Docker Hub（推荐，本机无需 Docker）
+---
 
-用 GitHub Actions 在云端构建，**本机不用装 Docker、不用 WSL2、不用重启系统**。
+### 方式 A · 拉取已发布镜像（推荐，最简）
 
-#### A-0. 一条命令做完（推荐）
+**A1. 最简：一条 `docker run`**
+
+```bash
+docker run -d --name qltools \
+  -p 1500:1500 \
+  -v qltools_data:/app/data \
+  -e APP_SECRET="$(openssl rand -base64 48)" \
+  --restart unless-stopped \
+  chungg/qltoolsv2:latest
+```
+
+**A2. 推荐：用 compose**
+
+```bash
+cp .env.example .env        # 至少改掉 APP_SECRET
+docker compose up -d
+```
+
+**A3. 用部署脚本（会顺带做环境检查和健康等待）**
+
+```bash
+./scripts/deploy.sh --pull
+```
+
+脚本会依次完成：检查 Docker → 生成 `.env`（含随机 `APP_SECRET`）→
+拉取镜像 → 启动容器 → 等待健康检查 → 打印访问地址。
+
+**验证**：
+
+```bash
+curl http://127.0.0.1:1500/ping     # 期望输出 pong
+```
+
+<details>
+<summary>不使用脚本时的等价手工命令</summary>
+
+```bash
+cp .env.example .env
+# 改掉 APP_SECRET：openssl rand -base64 48
+docker compose up -d
+```
+</details>
+
+---
+
+### 方式 B · 云端构建并推送（本机无需 Docker）
+
+本机没有 Docker（Windows 上很常见）时，借 GitHub Actions 的算力构建，
+产物直接推到镜像仓库，之后任何机器都能拉取部署。
+
+**B-0. 一条命令做完（推荐）**
 
 如果本机**没有独立安装 Git**（只有编辑器内置的 Git，PowerShell 里 `git` 报
 「无法将"git"项识别为 cmdlet」），或者你不想手动点网页，用下面这个脚本，
@@ -58,80 +106,70 @@ GitHub 令牌在 https://github.com/settings/tokens 生成（**Tokens (classic)*
 `Generate new token (classic)` → 勾选 `repo` 和 `workflow` 两个权限）。
 
 > 为什么需要 `workflow` 权限：本仓库包含 `.github/workflows/` 目录，
-> 缺少该权限推送时会被 GitHub 拒绝（报 `refusing to allow an OAuth App to create...`）。
+> 缺少该权限推送时会被 GitHub 拒绝。
 
 脚本可选参数（环境变量）：`GH_OWNER`（默认令牌所属账号）、`GH_REPO`（默认 `QLToolsV2-docker`）、
 `GH_VISIBILITY`（默认 `private`）、`SKIP_PUSH=1`、`SKIP_TRIGGER=1`。
 
-#### A-1. 手工做法：三步
+**B-1. 手工做法：三步**
 
 1. **推到 GitHub**：把本目录推到一个 GitHub 仓库（私有仓库也可以）
 2. **配置凭据**：仓库 `Settings → Secrets and variables → Actions → New repository secret`，新增两个：
 
    | 名称 | 值 |
    |------|-----|
-   | `DOCKERHUB_USERNAME` | 你的 Docker Hub 用户名 |
-   | `DOCKERHUB_TOKEN` | 在 https://hub.docker.com/settings/security 生成的 Access Token（**不要用账号密码**） |
+   | `DOCKERHUB_USERNAME` | 你的镜像仓库用户名 |
+   | `DOCKERHUB_TOKEN` | Docker Hub Access Token（**不要用账号密码**） |
 
 3. **触发构建**：仓库 `Actions` 页面 → 选「构建并推送镜像到 Docker Hub」→ `Run workflow`
    （也可以打标签触发：`git tag v1.0 && git push origin v1.0`）
 
-构建完成后镜像地址是 `<用户名>/qltoolsv2:latest`，每次构建还会附带短提交号标签便于回滚。
-workflow 文件：`.github/workflows/docker-publish.yml`。默认只构建 amd64（速度最快）；
-ARM 服务器请按文件内注释改成 `linux/amd64,linux/arm64`。
+workflow 文件：`.github/workflows/docker-publish.yml`。它会生成 `latest`、
+标签名、以及短提交号（`sha-<7位>`）三类标签，后者便于回滚。
 
-> **✅ 本仓库已完成一次真实云端构建（2026-09-14）**
+> **默认只构建 `linux/amd64`**。部署到 ARM 服务器（部分云主机、树莓派）前，
+> 请按文件内注释把 `platforms` 改成 `linux/amd64,linux/arm64` 后重跑。
+
+> **✅ 本项目已完成一次真实云端构建（2026-09-14）**
 >
 > | 项目 | 值 |
 > |------|-----|
 > | 镜像 | `chungg/qltoolsv2:latest` |
 > | 回滚标签 | `chungg/qltoolsv2:sha-6045d44` |
 > | 摘要 | `sha256:0eee0923f16a606a4048aaab4458695e01a3e8e8e40cfb6074b208ac9749f91d` |
-> | 平台 | `linux/amd64`（**仅此一个平台**；ARM 服务器需改 workflow 后重跑） |
+> | 平台 | `linux/amd64` |
 > | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34829239577 |
 > | 耗时 | 约 4.5 分钟（其中 Go 编译约 133 秒） |
->
-> 这证明「内嵌源码 + 云端构建」整条链路可用：镜像上下文完整、`//go:embed all:dist`
-> 的前端产物到位、`docs` 包空白导入未被误排除。
 
-> 部署端拿到镜像后，在 `.env` 里填 `IMAGE_REPO=你的用户名/qltoolsv2`，
-> 执行 `./scripts/deploy.sh --pull` 即可一键拉起。
+构建完的镜像，按「方式 A」部署即可。
 
-### 路线 B · 本机一键部署（机器上已有 Docker）
+---
 
-源码已在 `upstream/`，本机直接编译并启动：
+### 方式 C · 本机从源码构建部署
+
+源码在 `src/`，本机直接编译并启动：
 
 ```bash
-./scripts/deploy.sh            # 或 ./scripts/deploy.sh mysql / postgres
+./scripts/deploy.sh --build     # 或 ./scripts/deploy.sh mysql --build
 ```
 
 首次运行会自动生成 `.env` 与随机 `APP_SECRET`，然后构建镜像、启动容器、
-等待健康检查通过，最后打印访问地址。**除 Go 模块代理外不访问任何上游。**
+等待健康检查通过，最后打印访问地址。**除 Go 模块代理外不访问任何外部站点。**
 
-### 路线 C · 本地构建后推送到自己的 Docker Hub
+自己构建后也可以推到自己的镜像仓库，之后部署端就不需要源码了：
 
 ```bash
-docker login                          # 登录你的 Docker Hub 账号
+docker login
 # 在 .env 里填 IMAGE_REPO=你的用户名/qltoolsv2
-./scripts/build-push.sh --push        # 构建并推送
-```
+./scripts/build-push.sh --push
 
-之后**部署端只需要 `.env` + compose 文件**，无需源码：
-
-```bash
-# 目标服务器上
-cp .env.example .env
-# 填入 IMAGE_REPO=你的用户名/qltoolsv2
-./scripts/deploy.sh            # 自动拉取镜像并启动
-```
-
-多架构（同时支持 amd64 / arm64）：
-
-```bash
+# 多架构（同时支持 amd64 / arm64）
 ./scripts/build-push.sh --platforms linux/amd64,linux/arm64 --push
 ```
 
-### 路线 D · 完全离线 / 内网部署
+---
+
+### 方式 D · 完全离线 / 内网部署
 
 三种递进的做法，按你的隔离程度选择：
 
@@ -139,32 +177,32 @@ cp .env.example .env
 
 ```bash
 # 有网机器
-./scripts/build-push.sh
-docker save qltoolsv2:latest -o qltoolsv2.tar
+docker pull chungg/qltoolsv2:latest
+docker save chungg/qltoolsv2:latest -o qltoolsv2.tar
 # 拷贝 tar 到内网机器
 docker load -i qltoolsv2.tar
-./scripts/deploy.sh
+./scripts/deploy.sh --pull
 ```
 
 **D2. 内网自建镜像仓库**
 
 把 `IMAGE_REPO` 指向内网 registry（如 `registry.intra:5000/qltoolsv2`），
-`build-push.sh --push` 与 `deploy.sh` 都能直接工作。
+`build-push.sh --push` 与 `deploy.sh --pull` 都能直接工作。
 
 **D3. 连带 Go 依赖一起离线（真正零外网构建）**
 
-默认构建仍需要访问 Go 模块代理。若连代理也不能访问，先固化依赖：
+从源码构建时默认需要访问 Go 模块代理。若连代理也不能访问，先固化依赖：
 
 ```bash
 # 用容器生成 vendor/，本机无需安装 Go
-docker run --rm -v "$PWD/upstream:/src" -w /src golang:1.24-bookworm \
+docker run --rm -v "$PWD/src:/src" -w /src golang:1.24-bookworm \
   sh -c 'go mod download && go mod vendor'
 ```
 
 > Windows 下若路径转换报错，改用绝对路径并加 `MSYS_NO_PATHCONV=1`，例如：
-> `MSYS_NO_PATHCONV=1 docker run --rm -v "D:/path/to/upstream:/src" ...`
+> `MSYS_NO_PATHCONV=1 docker run --rm -v "D:/path/to/src:/src" ...`
 
-`Dockerfile` 检测到 `upstream/vendor/` 会自动切到 `-mod=vendor` 离线模式，
+`Dockerfile` 检测到 `src/vendor/` 会自动切到 `-mod=vendor` 离线模式，
 此后构建不再访问任何网络。
 
 ---
@@ -173,25 +211,26 @@ docker run --rm -v "$PWD/upstream:/src" -w /src golang:1.24-bookworm \
 
 | 文件 / 目录 | 作用 | 是否必需 |
 |------|------|----------|
-| `upstream/` | **内嵌的上游源码**（锁定提交，含前端产物 `web/dist` 与 `LICENSE`）。构建的唯一源码来源 | **必需** |
-| `Dockerfile` | 多阶段构建：从 `upstream/` 编译，运行期用 debian-slim | **必需** |
+| `src/` | **服务端源码**（306 个文件，含已内嵌的前端产物 `web/dist`）。构建的唯一源码来源 | 构建时必需 |
+| `Dockerfile` | 多阶段构建：从 `src/` 编译，运行期用 debian-slim | **必需** |
 | `entrypoint.sh` | 按环境变量生成 `config.yaml`、等待数据库就绪、以 `-config` 启动程序 | **必需** |
-| `scripts/deploy.sh` | **一键部署**：检查环境 → 生成 .env → 拉镜像或本地构建 → 启动 → 等待健康 | **必需** |
-| `scripts/build-push.sh` | 构建镜像并（可选）推送到自己的 Docker Hub | 推荐 |
-| `scripts/fetch-upstream.sh` | 更新/重新获取上游源码。**唯一需要访问上游的入口** | 可选 |
 | `docker-compose.yml` | 默认方案：单容器 + SQLite，零外部依赖 | 三选一 |
 | `docker-compose.mysql.yml` | 生产方案 A：应用 + MySQL 8 | 三选一 |
 | `docker-compose.postgres.yml` | 生产方案 B：应用 + PostgreSQL 16 | 三选一 |
 | `docker-compose.build.yml` | 构建覆盖文件（override），为上面三个补上 `build:` 段 | 本地构建时必需 |
-| `.github/workflows/docker-publish.yml` | **云端构建**：在 GitHub Actions 上构建并推送到 Docker Hub，本机无需装 Docker | 推荐 |
+| `scripts/deploy.sh` | **一键部署**：检查环境 → 生成 .env → 拉镜像或本地构建 → 启动 → 等待健康 | **必需** |
+| `scripts/build-push.sh` | 构建镜像并（可选）推送到自己的镜像仓库 | 可选 |
+| `scripts/github-bootstrap.sh` | 建仓库 → 推送 → 写 Secret → 触发云端构建，一条龙 | 可选 |
+| `scripts/gh-set-secret.py` | 上面脚本的辅助程序（GitHub 要求 Secret 加密上传） | 可选 |
+| `.github/workflows/docker-publish.yml` | **云端构建**：在 GitHub Actions 上构建并推送，本机无需装 Docker | 可选 |
 | `.env.example` | 环境变量样例；`deploy.sh` 会据此自动生成 `.env` | 推荐 |
-| `.dockerignore` | 精简构建上下文（**注意：不能排除 `upstream/`**） | 推荐 |
+| `.dockerignore` | 精简构建上下文（**注意：不能排除 `src/` 下的源码与 `web/dist`**） | 推荐 |
 | `.gitattributes` | 强制 shell/yaml 用 LF 换行，防止 Windows 检出成 CRLF 破坏容器启动 | 推荐 |
 | `.gitignore` | 忽略 `.env` 等敏感与临时文件 | 推荐 |
-| `UPSTREAM.md` | 上游来源、锁定提交、许可证与合规说明 | 推荐 |
 | `configs/config.yaml` | 配置参考样例（**容器不读它**；配合 `KEEP_CONFIG=1` 可挂载使用） | 参考 |
 | `examples/submit.sh` | 用 curl 提交一条数据（公开接口，免登录） | 可选 |
 | `examples/submit_to_qinglong.py` | 一键：登录 → 建面板 → 建变量 → 绑定 → 提交 | 可选 |
+| `NOTICE.md` | 第三方代码的许可与归属说明 | 推荐 |
 | `README.md` / `DEPLOY.md` | 快速上手 / 本文 | 推荐 |
 
 ---
@@ -202,8 +241,8 @@ docker run --rm -v "$PWD/upstream:/src" -w /src golang:1.24-bookworm \
 
 ```
 QLToolsV2-docker/
-├── upstream/                        # ★ 内嵌上游源码（306 文件，锁定提交）
-│   ├── .upstream-rev                #   版本记录：仓库 / 提交 / 获取时间
+├── src/                             # ★ 服务端源码（306 文件）
+│   ├── .source-rev                  #   快照记录：版本 / 文件数 / 许可
 │   ├── LICENSE                      #   Apache-2.0
 │   ├── go.mod / go.sum
 │   ├── cmd/  internal/  configs/
@@ -211,7 +250,8 @@ QLToolsV2-docker/
 ├── scripts/
 │   ├── deploy.sh                    # 一键部署
 │   ├── build-push.sh                # 构建 + 推送
-│   └── fetch-upstream.sh            # 更新上游源码（可选）
+│   ├── github-bootstrap.sh          # 云端构建一条龙
+│   └── gh-set-secret.py
 ├── examples/
 │   ├── submit.sh
 │   └── submit_to_qinglong.py
@@ -225,8 +265,7 @@ QLToolsV2-docker/
 ├── entrypoint.sh
 ├── .env.example                     # -> cp .env.example .env（deploy.sh 自动做）
 ├── .dockerignore  .gitattributes  .gitignore
-├── UPSTREAM.md                      # 上游来源与许可证说明
-├── DEPLOY.md  README.md
+├── NOTICE.md  DEPLOY.md  README.md
 └── .workbuddy/                      # 工作记录（与部署无关）
 ```
 
@@ -242,22 +281,22 @@ QLToolsV2-docker/
     └── ql_tools_v2.db   # SQLite 模式的数据库文件；MySQL/PG 模式下此目录为空
 ```
 
-前端资源**不需要目录**：上游 `web/embed.go` 用 `//go:embed all:dist` 把
+前端资源**不需要目录**：`src/web/embed.go` 用 `//go:embed all:dist` 把
 Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需要拷贝 `web/dist`。
 
 ---
 
 ## 五、依赖清单
 
-### 5.1 宿主机构建依赖
+### 5.1 部署端依赖
 
 | 项 | 要求 | 说明 |
 |----|------|------|
-| Docker Engine | 20.10+（推荐 24+） | 需要 BuildKit |
+| Docker Engine | 20.10+（推荐 24+） | 仅方式 C / D3 需要 BuildKit |
 | Docker Compose | v2（`docker compose` 子命令） | 不是老的 `docker-compose` v1 |
-| 网络 | **只需能访问 Go 模块代理** | GitHub 仅在执行 `fetch-upstream.sh` 时才需要 |
-| 磁盘 | 约 2–3 GB | 构建缓存 + 镜像 |
-| 工具 | `curl` / `tar`（仅 `fetch-upstream.sh` 需要） | 日常部署不需要 |
+| 网络 | 能访问镜像仓库 | 只有方式 C 从源码构建时才需要 Go 模块代理 |
+
+**只有拉镜像部署（方式 A）时，除了 Docker 本身什么都不需要。**
 
 ### 5.2 基础镜像
 
@@ -265,19 +304,19 @@ Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需�
 |------|------|------|
 | 构建 | `golang:1.24-bookworm` | 编译；自带 gcc，满足 CGO |
 | 运行 | `debian:bookworm-slim` | 约 100 MB 级 |
-| 数据库 | `mysql:8.0` / `postgres:16-alpine` | 按需 |
+| 数据库 | `mysql:8.0` / `postgres:16-alpine` | 按需，非必需 |
 
 ### 5.3 构建期系统包
 
 `git`、`ca-certificates`、`tzdata`
 
-（`git` 只为兼容少数走 VCS 的模块而保留；源码本身来自构建上下文，不再 clone。）
+（`git` 只为兼容少数走 VCS 拉取的 Go 模块而保留；源码本身来自构建上下文。）
 
 ### 5.4 运行期系统包
 
 `ca-certificates`（访问青龙 HTTPS）、`tzdata`（时区）、`wget`（健康检查）、`bash`（entrypoint）
 
-### 5.5 Go 模块（上游 `go.mod`，24 个直接依赖）
+### 5.5 Go 模块（`src/go.mod`，24 个直接依赖）
 
 工具链声明 `go 1.24.0` + `toolchain go1.24.3`。主要直接依赖：
 
@@ -318,9 +357,10 @@ Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需�
 | `APP_ADDRESS` | `0.0.0.0` | **实际不生效**，见下方说明，保留仅为兼容配置结构 |
 | `APP_SECRET` | `QLToolsV2` | JWT 签名密钥，**生产必须改**（`deploy.sh` 自动生成随机值） |
 
-> **`APP_ADDRESS` 为什么不生效：** 上游 `internal/app/bootstrap.go` 启动 HTTP 服务时写的是
-> `Addr: fmt.Sprintf(":%d", config.Config.App.Port)` —— 只取了 `port`，没有用 `address`。
-> 因此进程在容器内始终监听 `0.0.0.0`，端口映射不受该变量影响。
+> **`APP_ADDRESS` 为什么不生效：** 启动 HTTP 服务时写的是
+> `Addr: fmt.Sprintf(":%d", config.Config.App.Port)` —— 只取了 `port`，没有用 `address`
+> （见 `src/internal/app/bootstrap.go`）。因此进程在容器内始终监听 `0.0.0.0`，
+> 端口映射不受该变量影响。
 
 ### 6.2 数据库层（写入 `db.*`）
 
@@ -334,12 +374,12 @@ Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需�
 | `DB_PASSWORD` | — | 空 | 空 | sqlite 忽略 |
 | `DB_CONFIG` | 空 | `charset=utf8mb4&parseTime=True&loc=Local` | `sslmode=disable` | **两种数据库格式完全不同** |
 
-### 6.3 镜像与构建（部署端最关键）
+### 6.3 镜像与部署（部署端最关键）
 
 | 环境变量 | 默认值 | 作用 |
 |----------|--------|------|
-| `IMAGE_REPO` | 空 | 镜像仓库，如 `yourname/qltoolsv2`。**填了就用镜像，留空就用本地源码构建** |
-| `IMAGE_TAG` | `latest` | 镜像标签 |
+| `IMAGE_REPO` | `chungg/qltoolsv2` | 镜像仓库。填了就用镜像，留空则用本地 `src/` 源码构建 |
+| `IMAGE_TAG` | `latest` | 镜像标签，也可填 `sha-<7位提交号>` 锁定版本 |
 | `PLATFORMS` | 空 | 多架构构建，如 `linux/amd64,linux/arm64` |
 | `GOPROXY` | `https://goproxy.cn,https://proxy.golang.org,direct` | Go 模块代理（构建期生效） |
 
@@ -358,9 +398,6 @@ Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需�
 | `GOPROXY` | `https://goproxy.cn,https://proxy.golang.org,direct` | Go 模块代理，国内加速 |
 | `TZ` | `Asia/Shanghai` | 构建镜像的时区 |
 
-> 注意：源码已内嵌，**不再有 `QLTOOLS_REPO` / `QLTOOLS_REF` 这类构建参数**。
-> 要切换上游版本，请改用 `./scripts/fetch-upstream.sh --sha <commit>`。
-
 ---
 
 ## 七、部署步骤
@@ -372,30 +409,17 @@ docker version          # 需要 20.10+
 docker compose version  # 需要 v2
 ```
 
-### 步骤 1 · 一键部署（SQLite，建议先跑通）
+### 步骤 1 · 启动服务
 
 ```bash
-./scripts/deploy.sh
+./scripts/deploy.sh --pull
 ```
-
-脚本会依次完成：检查 Docker → 生成 `.env`（含随机 `APP_SECRET`）→
-构建镜像 → 启动容器 → 等待健康检查 → 打印访问地址。
 
 日志出现 `数据库连接成功 (Ent)` 与 `监听端口: 1500` 即为正常：
 
 ```bash
 curl http://127.0.0.1:1500/ping     # 期望输出 pong
 ```
-
-<details>
-<summary>不使用脚本时的等价手工命令</summary>
-
-```bash
-cp .env.example .env
-# 改掉 APP_SECRET：openssl rand -base64 48
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-```
-</details>
 
 ### 步骤 2 · 注册管理员（**只在第一次做**）
 
@@ -454,32 +478,15 @@ ENV_NAME=JD_COOKIE ENV_VALUE="pt_key=xxx;pt_pin=yyy;" \
 ./scripts/deploy.sh postgres    # 应用 + PostgreSQL 16
 ```
 
-数据表由 Ent 在**首次启动时自动迁移创建**，不需要手工执行任何 SQL。
+数据表由程序在**首次启动时自动迁移创建**，不需要手工执行任何 SQL。
 entrypoint 会先等待数据库端口就绪再启动应用。
 
 > 从 SQLite 切到 MySQL/PG 属于**换库**，原 SQLite 里的用户、面板、变量配置不会自动迁移，
 > 需要在后台重新配置（或自行导出导入）。
 
-### 步骤 7 · 发布到自己的 Docker Hub（可选）
+### 步骤 7 · 升级与回滚
 
-```bash
-docker login
-# 编辑 .env：IMAGE_REPO=你的用户名/qltoolsv2
-./scripts/build-push.sh --push
-```
-
-推送后，**任何机器**只要拿到本目录的 compose 文件与 `.env` 即可一键部署：
-
-```bash
-./scripts/deploy.sh             # 自动拉取镜像启动，无需源码、无需编译
-```
-
-### 步骤 8 · 更新上游版本（可选）
-
-```bash
-./scripts/fetch-upstream.sh --sha <新的提交>     # 或 --ref <分支/tag>
-./scripts/build-push.sh --push
-```
+见下一节「数据持久化与升级」。
 
 ---
 
@@ -493,19 +500,14 @@ docker login
 
 **只要不删卷，数据就不会丢。**
 
-升级方式取决于你的镜像来源：
+升级：
 
 ```bash
-# 用自有镜像（路线 B）
-./scripts/build-push.sh --push      # 构建机
-./scripts/deploy.sh                 # 部署机，会自动拉取新镜像
-
-# 用本地源码（路线 A）
-./scripts/deploy.sh --build
+docker compose pull && docker compose up -d     # 拉取最新镜像并重建容器
 ```
 
-回滚：把 `IMAGE_TAG` 改成之前推送的版本标签（`build-push.sh` 每次推送都会额外打一个
-`YYYYMMDD` 日期标签）后重新 `./scripts/deploy.sh`。
+回滚：把 `.env` 里的 `IMAGE_TAG` 改成之前构建产出的提交号标签（`sha-<7位提交号>`），
+然后 `./scripts/deploy.sh --pull`。
 
 > `docker compose down -v` 会删除所有卷（数据全丢），只在确认不需要数据时使用。
 
@@ -521,7 +523,7 @@ docker login
 | 指标 | `GET /metrics`（Prometheus） |
 | Swagger | `GET /swagger/index.html`（**仅 `APP_MODE=debug`**） |
 | 统一响应体 | `{"code": 20000, "msg": "Success", "data": {...}}` |
-| 成功码 | **20000**（`CodeSuccess`），不是 200 / 0 |
+| 成功码 | **20000**，不是 200 / 0 |
 
 | 接口 | 方法 | 鉴权 |
 |------|------|------|
@@ -552,13 +554,38 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 
 ---
 
-## 十、排错
+## 十、实现要点与已知行为
+
+以下行为与直觉不符，是配置和排错时最容易踩的坑。括号内是 `src/` 中对应的实现位置。
+
+| # | 要点 |
+|---|------|
+| 1 | 启动参数支持 `-config` 与 `-c`，默认路径是相对的 `configs/config.yaml`（`internal/app/bootstrap.go`、`initializer/viper.go`） |
+| 2 | 配置文件读不到会**直接 panic**，所以 entrypoint 必须生成它（`initializer/viper.go`） |
+| 3 | **`app.address` 不生效**，HTTP 服务只用 `port`，始终监听全部网卡（`bootstrap.go`） |
+| 4 | 前端已 `//go:embed all:dist` 内嵌，**不需要 Node 构建**（`web/embed.go`） |
+| 5 | 缓存是进程内 `gcache`，**不需要 Redis**，`cache` 配置段实际不生效（`initializer/cache.go`） |
+| 6 | SQLite 只用 `db.name` 作文件路径，并自行追加 `?_fk=1`，**路径中不可含 `?`**（`internal/data/client.go`） |
+| 7 | PostgreSQL 的 `db.config` 会**原样拼进 DSN**，必须是 libpq 风格参数（`internal/data/client.go`） |
+| 8 | 成功响应码是 **20000**，字段名是 **`msg`** 不是 `message`（`internal/pkg/response/`） |
+| 9 | 健康检查 `/ping` 返回 `pong`（`initializer/router.go`） |
+| 10 | **注册和登录都必须过验证码**，验证码存内存（`controller/auth.go`） |
+| 11 | 系统**只允许注册一个用户**，首个即为管理员 |
+| 12 | 表结构由 Ent 启动时**自动迁移**，无需手工建表（`internal/data/client.go`） |
+| 13 | `/api/open/submit` 免登录但限速更严（2 req/s，桶容量 5）（`controller/open.go`） |
+| 14 | 鉴权头是 `Authorization: Bearer <token>`，且只接受 access 类型 token（`middleware/jwt.go`） |
+| 15 | 变量创建时 `quantity`、`mode`、`cdk_limit` 都是**必填**；新变量默认可能禁用（`internal/schema/env.go`） |
+| 16 | 控制 KEY（卡密）校验的是 `enable_key` 字段，不是 `cdk_limit=0`（`internal/schema/env.go`） |
+| 17 | 优雅停机有 10 秒超时，compose 里 `stop_grace_period` 设了 15 秒留余量 |
+
+---
+
+## 十一、排错
 
 | 现象 | 原因与处理 |
 |------|------------|
-| `!! 缺少内嵌源码 upstream/go.mod` | `upstream/` 不完整。执行 `./scripts/fetch-upstream.sh` 重新获取 |
-| `!! 拉取失败（镜像不存在、未 docker login…）` | `IMAGE_REPO` 写错或未登录。确认仓库名，或改回本地构建（`deploy.sh --build`） |
-| 容器起不来，日志报 `fatal error config file` | `config.yaml` 没生成出来。上游用 viper 读不到配置会直接 panic。检查 `CONFIG_PATH` 指向的目录可写，或 `KEEP_CONFIG=1` 时挂载的文件是否真的存在 |
+| `!! 拉取失败（镜像不存在、未 docker login…）` | `IMAGE_REPO` 写错或仓库私有未登录。确认仓库名，或改从源码构建（`deploy.sh --build`） |
+| 容器起不来，日志报 `fatal error config file` | `config.yaml` 没生成出来，程序读不到配置会直接 panic。检查 `CONFIG_PATH` 指向的目录可写，或 `KEEP_CONFIG=1` 时挂载的文件是否真的存在 |
 | 日志报 `failed creating schema resources` | 数据库连不上或权限不足。核对 `DB_HOST/PORT/NAME/USERNAME/PASSWORD`，以及 MySQL 账号是否有建表权限 |
 | 用 PostgreSQL 时连接直接失败 | `DB_CONFIG` 沿用了 MySQL 的 charset 串。postgres 需要 libpq 风格，用 `sslmode=disable` |
 | `/usr/bin/env: 'bash\r': No such file or directory` | 脚本是 CRLF 换行（Windows 编辑导致）。执行 `sed -i 's/\r$//' entrypoint.sh scripts/*.sh`，并保留仓库内的 `.gitattributes` |
@@ -567,39 +594,10 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 注册提示「系统已存在用户」 | 全系统只允许一个账号。直接登录即可；忘记密码需清库中 `users` 表 |
 | 验证码一直提示错误 | 验证码用**内存存储**，重启容器会失效，刷新页面重新取即可 |
 | 端口 1500 被占用 | 在 `.env` 里改 `HOST_PORT=15001` |
+| `no matching manifest for linux/arm64` | 镜像只构建了 amd64。按方式 B 改 `platforms` 后重跑构建 |
 | 构建很慢 | 首次要 `go mod download`。确认 `GOPROXY` 用的是 `https://goproxy.cn`；若已做 vendor 可完全离线 |
 | 构建报 `requires go >= 1.24.x` | 镜像内 Go 版本偏低。Dockerfile 已设 `GOTOOLCHAIN=auto` 兜底自动拉取匹配工具链 |
 | `deploy.sh` 说 Docker 守护进程未运行 | 启动 Docker Desktop / `systemctl start docker` |
-
----
-
-## 十一、与上游源码的一致性核对
-
-以下结论逐行核对了上游 `master` 分支源码（306 个文件全量）后得出，
-用来解释本方案为什么这么写——其中若干条与直觉不符，属于容易踩的坑。
-
-| # | 结论 | 源码依据 |
-|---|------|----------|
-| 1 | 上游**根目录没有 Dockerfile**，CI 里的 `file: ./Dockerfile` 是失效引用 | 全量文件树核对；`.github/workflows/build_docker_image.yml` |
-| 2 | 启动参数支持 `-config` 与 `-c`，默认路径是相对的 `configs/config.yaml` | `internal/app/bootstrap.go`、`internal/app/initializer/viper.go` |
-| 3 | 配置文件读不到会 **panic**，所以 entrypoint 必须生成它 | `viper.go` 中 `panic(fmt.Errorf("fatal error config file: %w", err))` |
-| 4 | **`app.address` 不生效**，HTTP 服务只用 port，始终监听全部网卡 | `bootstrap.go`: `Addr: fmt.Sprintf(":%d", ...)` |
-| 5 | 前端已 `//go:embed all:dist` 内嵌，**不需要 Node 构建** | `web/embed.go`、`internal/app/initializer/web.go` |
-| 6 | 缓存是进程内 `gcache`，**不需要 Redis**，`cache` 配置段实际不生效 | `internal/app/initializer/cache.go` |
-| 7 | SQLite 只用 `db.name` 作文件路径，并自行追加 `?_fk=1` | `internal/data/client.go`: `sql.Open("sqlite3", cfg.Name+"?_fk=1")` |
-| 8 | PostgreSQL 的 `db.config` 会**原样拼进 DSN**，必须是 libpq 风格参数 | `client.go`: `host=%s port=%d user=%s password=%s dbname=%s %s` |
-| 9 | 成功响应码是 **20000**，字段名是 `msg` 不是 `message` | `internal/pkg/response/code.go`、`response.go` |
-| 10 | 健康检查 `/ping` 返回 `pong` | `internal/app/initializer/router.go` |
-| 11 | **注册和登录都必须过验证码**，验证码存内存 | `internal/controller/auth.go`、`base64Captcha.DefaultMemStore` |
-| 12 | 系统**只允许注册一个用户**，首个即为管理员 | `internal/service` 注册逻辑 |
-| 13 | 表结构由 Ent 启动时**自动迁移**，无需手工建表 | `client.go`: `Client.Schema.Create(...)` |
-| 14 | `/api/open/submit` 免登录但限速更严（2 req/s，桶容量 5） | `internal/controller/open.go`、`internal/middleware/rate_limit.go` |
-| 15 | 鉴权头是 `Authorization: Bearer <token>`，且只接受 access 类型 token | `internal/middleware/jwt.go` |
-| 16 | 变量创建时 `quantity`、`mode`、`cdk_limit` 都是**必填**；新变量默认可能禁用 | `internal/schema/env.go` |
-| 17 | 控制 KEY（卡密）校验的是 `enable_key` 字段，不是 `cdk_limit=0` | `internal/schema/env.go` |
-| 18 | 上游 `Makefile` 的 `gen` 目标引用了已不存在的 `cmd/generate/generate.go` | `Makefile` vs 实际文件树；入口只有 `cmd/main.go` |
-| 19 | `web/dist` 前端产物**已随源码入库**（158 文件），因此可纯 Go 构建 | 上游仓库文件树 |
-| 20 | 上游许可证是 **Apache-2.0**，允许再分发（需保留 LICENSE） | `upstream/LICENSE` |
 
 ---
 
@@ -611,7 +609,7 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 3. `/api/open/submit` 是免登录写接口，**不要直接暴露到公网**。建议放在 Nginx 反代后，
    加 IP 白名单、Basic Auth 或 WAF 限速。
 4. `.env` 内含密钥，已被 `.gitignore` 忽略，**不要提交到版本库**；
-   推送到 Docker Hub 的镜像里也不包含 `.env`（构建上下文已排除）。
+   推送到镜像仓库的镜像里也不包含 `.env`（构建上下文已排除）。
 5. 镜像默认以 root 运行。若需加固，可在 `Dockerfile` 运行阶段创建非 root 用户并
    `chown /app/data`；注意使用 bind mount 时要同步宿主机目录属主。
 6. 定期备份数据库卷；SQLite 模式下直接备份 `/app/data/ql_tools_v2.db` 即可。

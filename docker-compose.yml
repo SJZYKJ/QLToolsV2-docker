@@ -36,13 +36,13 @@ services:
       # SQLite 数据库文件位于 /app/data，必须持久化
       - qltools_data:/app/data
     healthcheck:
-      # 上游 /ping 返回 "pong"
+      # 应用 /ping 返回 "pong"
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:$${APP_PORT}/ping || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 20s
-    # 上游实现了 SIGTERM 优雅停机（10 秒超时），这里留出余量
+    # 应用实现了 SIGTERM 优雅停机（10 秒超时），这里留出余量
     stop_grace_period: 15s
 
 volumes:
