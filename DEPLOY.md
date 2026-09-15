@@ -130,16 +130,16 @@ workflow 文件：`.github/workflows/docker-publish.yml`。它会生成 `latest`
 > **默认只构建 `linux/amd64`**。部署到 ARM 服务器（部分云主机、树莓派）前，
 > 请按文件内注释把 `platforms` 改成 `linux/amd64,linux/arm64` 后重跑。
 
-> **✅ 本项目已完成一次真实云端构建（2026-09-14）**
+> **✅ 本项目已完成真实云端构建**
 >
 > | 项目 | 值 |
 > |------|-----|
 > | 镜像 | `chungg/qltoolsv2:latest` |
-> | 回滚标签 | `chungg/qltoolsv2:sha-6045d44` |
-> | 摘要 | `sha256:0eee0923f16a606a4048aaab4458695e01a3e8e8e40cfb6074b208ac9749f91d` |
-> | 平台 | `linux/amd64` |
-> | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34829239577 |
-> | 耗时 | 约 4.5 分钟（其中 Go 编译约 133 秒） |
+> | 回滚标签 | `chungg/qltoolsv2:sha-7da6073` |
+> | 摘要 | `sha256:19833a40bba6ae609ebd7241a6624775fbf05b24064a151364cf734fde2c3b95` |
+> | 平台 | `linux/amd64`（**仅此一个平台**） |
+> | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34916066380 |
+> | 耗时 | 约 4 分钟 |
 
 构建完的镜像，按「方式 A」部署即可。
 
