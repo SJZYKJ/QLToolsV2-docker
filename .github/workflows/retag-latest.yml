@@ -1,0 +1,102 @@
+# ==============================================================================
+# 仅重新打 latest 标签（不重新构建镜像）
+#
+# 使用场景：
+#   latest 标签被误删，但某个版本标签（如 SHA-0915-V1.0）或提交标签
+#   （如 sha-b989a87）还在。本工作流用 `docker buildx imagetools create`
+#   把已有镜像的 manifest 原样复制到 latest —— 不重新构建、不产生新版本号、
+#   不消耗构建时间（几秒钟完成），镜像 digest 与源标签完全一致。
+#
+#   ⚠ 与「构建并推送镜像到 Docker Hub」的区别：
+#      那个工作流是「从源码构建一个新镜像」，每次运行都会产生新的版本号；
+#      本工作流只是「给已有镜像再挂一个标签」，不构建任何东西。
+#
+# 手动触发：仓库 Actions 页面 → 左侧选「重新上传 latest 标签」→ Run workflow
+#   source_tag 留空时，自动取最新的 SHA-<月日>-V<序号>.0 标签作为源
+# ==============================================================================
+
+name: 重新上传 latest 标签
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: '源标签（留空则自动取最新的 SHA-<月日>-V<序号>.0）'
+        required: false
+        default: ''
+
+# 同一时间只跑一个，避免并发改同一个标签
+concurrency:
+  group: retag-latest
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: qltoolsv2
+
+jobs:
+  retag-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 登录 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 准备 Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 解析源标签
+        id: src
+        env:
+          REPO: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          INPUT_TAG: ${{ github.event.inputs.source_tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_TAG}" ]; then
+            SRC="${INPUT_TAG}"
+          else
+            # 取最近更新的一个 SHA-<月日>-V<序号>.0 标签
+            SRC=$(curl -fsS "https://hub.docker.com/v2/repositories/${REPO}/tags?page_size=100&ordering=last_updated" \
+                    | jq -r '.results[].name' \
+                    | grep -E '^SHA-[0-9]{4}-V[0-9]+\.[0-9]+$' \
+                    | head -1)
+          fi
+          if [ -z "${SRC}" ]; then
+            echo "::error::没能解析出源标签，请手动填写 source_tag"
+            exit 1
+          fi
+          echo "源标签：${SRC}"
+          echo "tag=${SRC}" >> "$GITHUB_OUTPUT"
+
+      - name: 校验源标签存在
+        env:
+          REPO: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          SRC: ${{ steps.src.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${REPO}:${SRC}" >/dev/null
+          echo "✓ 源标签存在：${REPO}:${SRC}"
+
+      - name: 把 latest 指向该镜像（不重建）
+        id: retag
+        env:
+          REPO: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          SRC: ${{ steps.src.outputs.tag }}
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create -t "${REPO}:latest" "${REPO}:${SRC}"
+
+          # 读回 digest，确认两边一致
+          SRC_DIGEST=$(docker buildx imagetools inspect "${REPO}:${SRC}" --format '{{json .Manifest}}' | jq -r '.digest')
+          NEW_DIGEST=$(docker buildx imagetools inspect "${REPO}:latest"  --format '{{json .Manifest}}' | jq -r '.digest')
+          echo "源  ${SRC} -> ${SRC_DIGEST}"
+          echo "新  latest -> ${NEW_DIGEST}"
+
+          echo "digest=${NEW_DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "### latest 已重新指向上游镜像" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${REPO}:latest  ->  ${NEW_DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+          echo "${REPO}:${SRC}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
