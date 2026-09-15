@@ -173,11 +173,12 @@ workflow 文件：`.github/workflows/docker-publish.yml`。它会生成 `latest`
 > | 项目 | 值 |
 > |------|-----|
 > | 镜像 | `chungg/qltoolsv2:latest` |
-> | 回滚标签 | `chungg/qltoolsv2:sha-7da6073` |
-> | 摘要 | `sha256:19833a40bba6ae609ebd7241a6624775fbf05b24064a151364cf734fde2c3b95` |
+> | 回滚标签 | `chungg/qltoolsv2:sha-a3b9fbf` |
+> | 摘要 | `sha256:910c5afa94d9cd7ec17fb6f4a62dcce2c986755cb3e304de4ad32e6635f291d6` |
 > | 平台 | `linux/amd64`（**仅此一个平台**） |
-> | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34916066380 |
-> | 耗时 | 约 4 分钟 |
+> | 构建日志 | https://github.com/SJZYKJ/QLToolsV2-docker/actions/runs/34944068403 |
+> | 耗时 | 约 2 分 41 秒 |
+> | 对应提交 | `a3b9fbf` feat: 更新模式支持按变量配置「多值分隔符」与「账号字段分隔符」 |
 
 构建完的镜像，按「方式 A」部署即可。
 
