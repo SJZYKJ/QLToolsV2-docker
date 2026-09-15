@@ -28,6 +28,10 @@ services:
       APP_ADDRESS: ${APP_ADDRESS:-0.0.0.0}
       APP_PORT: ${APP_PORT:-1500}
       APP_SECRET: ${APP_SECRET:-change_me_please}
+      # 初始管理员账号：仅在数据库里还没有任何用户时创建
+      QLTOOLS_ADMIN_USERNAME: ${QLTOOLS_ADMIN_USERNAME:-admin}
+      QLTOOLS_ADMIN_PASSWORD: ${QLTOOLS_ADMIN_PASSWORD:-}
+      QLTOOLS_ADMIN_RESET: ${QLTOOLS_ADMIN_RESET:-0}
       DB_TYPE: mysql
       DB_HOST: qltools-mysql
       DB_PORT: "3306"

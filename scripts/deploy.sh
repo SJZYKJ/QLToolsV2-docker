@@ -70,7 +70,16 @@ gen_secret() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -base64 48 | tr -d '\n=+/' | cut -c1-48
   else
-    LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 48
+    LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 48 || true
+  fi
+}
+
+# 只生成字母数字，避免密码里的 $ " ' # 被 compose 的变量替换或 YAML 引号吃掉
+gen_password() {
+  if command -v openssl >/dev/null 2>&1; then
+    openssl rand -base64 32 | tr -d '\n=+/' | cut -c1-16
+  else
+    LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom 2>/dev/null | head -c 16 || true
   fi
 }
 
@@ -109,19 +118,25 @@ esac
 
 # ---------------- 2. 准备 .env ----------------
 NEW_ENV=0
+ADMIN_PASSWORD=""
 if [ ! -f .env ]; then
   [ -f .env.example ] || { echo "!! 缺少 .env.example" >&2; exit 1; }
   cp .env.example .env
   SECRET="$(gen_secret)"
   sed_i "s|^APP_SECRET=.*|APP_SECRET=${SECRET}|" .env
+  # 顺带生成初始管理员密码，首次启动即自动建号，省去手工注册
+  ADMIN_PASSWORD="$(gen_password)"
+  sed_i "s|^QLTOOLS_ADMIN_PASSWORD=.*|QLTOOLS_ADMIN_PASSWORD=${ADMIN_PASSWORD}|" .env
   NEW_ENV=1
-  echo ">> 已生成 .env，并写入随机 APP_SECRET（48 位）"
+  echo ">> 已生成 .env，并写入随机 APP_SECRET（48 位）与随机管理员密码（16 位）"
 fi
 
 # 环境变量优先，其次读 .env（与 build-push.sh 保持一致）
 IMAGE_REPO="${IMAGE_REPO:-$(read_env IMAGE_REPO)}"
 IMAGE_TAG="${IMAGE_TAG:-$(read_env IMAGE_TAG)}"; [ -n "$IMAGE_TAG" ] || IMAGE_TAG="latest"
 HOST_PORT="${HOST_PORT:-$(read_env HOST_PORT)}"; [ -n "$HOST_PORT" ] || HOST_PORT="1500"
+ADMIN_USER="$(read_env QLTOOLS_ADMIN_USERNAME)"; [ -n "$ADMIN_USER" ] || ADMIN_USER="admin"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-$(read_env QLTOOLS_ADMIN_PASSWORD)}"
 
 # ---------------- 3. 决定拉取还是构建 ----------------
 if [ "$MODE" = "auto" ]; then
@@ -189,20 +204,27 @@ echo
 echo "==================================================================="
 echo " 部署完成"
 echo "-------------------------------------------------------------------"
-echo "   后台地址 ：http://${IP}:${HOST_PORT}"
-echo "   健康检查 ：http://${IP}:${HOST_PORT}/ping   （返回 pong 即正常）"
+echo "   免密提交页：http://${IP}:${HOST_PORT}/         外部提交数据用，无需登录"
+echo "   后台登录页：http://${IP}:${HOST_PORT}/admin    管理员登录入口"
+echo "   健康检查 ：http://${IP}:${HOST_PORT}/ping     返回 pong 即正常"
 echo "   容器名称 ：qltools_v2"
 echo "   编排文件 ：${COMPOSE_FILE}"
 echo
 echo "   查看日志 ：${DC[*]} -f ${COMPOSE_FILE} logs -f qltools"
 echo "   停止服务 ：${DC[*]} -f ${COMPOSE_FILE} down"
 echo "-------------------------------------------------------------------"
-echo "   注意：系统只允许注册一个账号，首个注册者即为管理员。"
-echo "         请立即完成注册，否则接口将保持开放。"
+if [ -n "$ADMIN_PASSWORD" ]; then
+  echo "   管理员账号：${ADMIN_USER} / ${ADMIN_PASSWORD}"
+  echo "   （已写入 .env 的 QLTOOLS_ADMIN_*；首次启动会自动建号，直接登录即可）"
+else
+  echo "   管理员账号：未自动创建（.env 里 QLTOOLS_ADMIN_PASSWORD 为空）。"
+  echo "   请打开 ${IP}:${HOST_PORT}/admin 点「注册账号」自行注册首个账号，"
+  echo "   或在 .env 里补上 QLTOOLS_ADMIN_USERNAME / QLTOOLS_ADMIN_PASSWORD 后重启。"
+fi
 echo "==================================================================="
 
 if [ "$NEW_ENV" = "1" ]; then
   echo
-  echo " 提示：.env 已自动生成，内含随机 APP_SECRET。"
+  echo " 提示：.env 已自动生成。"
   echo "       如使用 mysql / postgres 方案，请务必修改其中的数据库密码！"
 fi

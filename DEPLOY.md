@@ -387,6 +387,9 @@ Vue 构建产物打进了二进制，运行期既不需要 Node.js，也不需�
 
 | 环境变量 | 默认值 | 作用 |
 |----------|--------|------|
+| `QLTOOLS_ADMIN_USERNAME` | `admin` | 初始管理员用户名。**不写入 `config.yaml`**，由 `src/internal/app/initializer/seed.go` 直接读环境变量 |
+| `QLTOOLS_ADMIN_PASSWORD` | 空 | 初始管理员密码。**留空则跳过自动建号**，此时可打开 `/admin` 点「注册账号」自助注册 |
+| `QLTOOLS_ADMIN_RESET` | 特殊值，置 `1` | 对**已存在**的同名账号强制重置密码（忘记密码的补救手段）。生效一次后应改回 `0` |
 | `CONFIG_PATH` | `/app/configs/config.yaml` | 生成/读取配置文件的位置 |
 | `KEEP_CONFIG` | `0` | 设为 `1` 且文件已存在时跳过生成，直接使用挂载进来的配置 |
 | `HOST_PORT` | `1500` | 宿主机映射端口（仅 compose 使用） |
@@ -421,14 +424,50 @@ docker compose version  # 需要 v2
 curl http://127.0.0.1:1500/ping     # 期望输出 pong
 ```
 
-### 步骤 2 · 注册管理员（**只在第一次做**）
+### 步骤 2 · 准备管理员账号（**只在第一次做**）
 
-浏览器打开 `http://<服务器IP>:1500`。
+先记住两个入口：
+
+| 地址 | 页面 | 是否需要登录 |
+|------|------|--------------|
+| `http://<服务器IP>:1500/` | 免密提交页（重定向到 `/commitVariable`），外部提交数据用 | 不需要 |
+| `http://<服务器IP>:1500/admin` | 后台管理员登录页 | 需要账号密码 + 验证码 |
+
+> `/admin` 与 `/login` 指向同一个页面，两个地址都能进后台。
+
+管理员账号有三种拿法，**任选一种**：
+
+**（a）环境变量自动创建（推荐，无人值守部署用这个）**
+
+`.env` 里填：
+
+```ini
+QLTOOLS_ADMIN_USERNAME=admin
+QLTOOLS_ADMIN_PASSWORD=你的密码
+```
+
+容器首次启动时，如果数据库里一个用户都没有，就会用这组账号自动建号，
+日志里会出现 `已自动创建管理员账号，可直接用该账号登录后台`。
+之后直接打开 `/admin` 登录即可，不需要点「注册账号」。
+`./scripts/deploy.sh` 首次生成 `.env` 时会写入一个随机密码并在结尾打印。
+
+**（b）页面自助注册**
+
+打开 `http://<服务器IP>:1500/admin`，点表单下方的 **「注册账号」**，
+填用户名、密码、验证码（算术题，点验证码图片刷新）即可。
 
 > **系统只允许注册一个账号，首个注册者即为管理员。**
-> 注册需要填图形验证码（算术题），点验证码图片刷新。登录同样需要验证码。
+> 登录页输入框里的「请输入用户名 / 请输入密码」只是占位提示，
+> 系统**不会**预置 `admin/admin` 之类的默认账号。
 
-登录后浏览器会拿到 `access_token`（JWT），后续管理类接口都要带它。
+**（c）忘记密码时重置**
+
+`.env` 里填好 `QLTOOLS_ADMIN_PASSWORD`，并把 `QLTOOLS_ADMIN_RESET` 置为 `1`，
+重启一次容器（`docker compose up -d`），已存在的同名账号密码会被重置为该值。
+
+> ⚠️ 重置完**必须把 `QLTOOLS_ADMIN_RESET` 改回 `0`**，否则每次重启都会把密码改回去。
+
+登录成功后浏览器会拿到 `access_token`（JWT），后续管理类接口都要带它。
 
 ### 步骤 3 · 在青龙面板侧准备 Open API 凭证
 
@@ -519,11 +558,16 @@ docker compose pull && docker compose up -d     # 拉取最新镜像并重建容
 |----|----|
 | 服务端口 | `1500` |
 | 健康检查 | `GET /ping` → `pong` |
-| 后台 UI | `GET /`（未匹配路由回落到内嵌的 index.html） |
+| 免密提交页 | `GET /`（重定向到 `/commitVariable`，**不需要登录**） |
+| 后台登录页 | `GET /admin`（等价于 `/login`，需要账号密码 + 验证码） |
 | 指标 | `GET /metrics`（Prometheus） |
 | Swagger | `GET /swagger/index.html`（**仅 `APP_MODE=debug`**） |
 | 统一响应体 | `{"code": 20000, "msg": "Success", "data": {...}}` |
 | 成功码 | **20000**，不是 200 / 0 |
+
+> 前端是 Vue Router history 模式，除 `/api/*` 与 `/assets/*` 之外的路径都由
+> `initializer/web.go` 的 `NoRoute` 回落到内嵌 `index.html`，所以 `/admin` 这类
+> 前端路由由浏览器端接管，服务端不需要单独配置。
 
 | 接口 | 方法 | 鉴权 |
 |------|------|------|
@@ -571,12 +615,14 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 9 | 健康检查 `/ping` 返回 `pong`（`initializer/router.go`） |
 | 10 | **注册和登录都必须过验证码**，验证码存内存（`controller/auth.go`） |
 | 11 | 系统**只允许注册一个用户**，首个即为管理员 |
-| 12 | 表结构由 Ent 启动时**自动迁移**，无需手工建表（`internal/data/client.go`） |
-| 13 | `/api/open/submit` 免登录但限速更严（2 req/s，桶容量 5）（`controller/open.go`） |
-| 14 | 鉴权头是 `Authorization: Bearer <token>`，且只接受 access 类型 token（`middleware/jwt.go`） |
-| 15 | 变量创建时 `quantity`、`mode`、`cdk_limit` 都是**必填**；新变量默认可能禁用（`internal/schema/env.go`） |
-| 16 | 控制 KEY（卡密）校验的是 `enable_key` 字段，不是 `cdk_limit=0`（`internal/schema/env.go`） |
-| 17 | 优雅停机有 10 秒超时，compose 里 `stop_grace_period` 设了 15 秒留余量 |
+| 12 | 启动时若设置了 `QLTOOLS_ADMIN_PASSWORD` 且库中无用户，会**自动建号**；库中已有用户则默认不动，只有 `QLTOOLS_ADMIN_RESET=1` 才重置密码（`initializer/seed.go`） |
+| 13 | 前端路由里 `/admin` 是 `/login` 的别名，二者是同一个登录页；`/` 重定向到免密提交页 `/commitVariable`（`web/dist/assets/index-*.js` 内的 `routes`） |
+| 14 | 表结构由 Ent 启动时**自动迁移**，无需手工建表（`internal/data/client.go`） |
+| 15 | `/api/open/submit` 免登录但限速更严（2 req/s，桶容量 5）（`controller/open.go`） |
+| 16 | 鉴权头是 `Authorization: Bearer <token>`，且只接受 access 类型 token（`middleware/jwt.go`） |
+| 17 | 变量创建时 `quantity`、`mode`、`cdk_limit` 都是**必填**；新变量默认可能禁用（`internal/schema/env.go`） |
+| 18 | 控制 KEY（卡密）校验的是 `enable_key` 字段，不是 `cdk_limit=0`（`internal/schema/env.go`） |
+| 19 | 优雅停机有 10 秒超时，compose 里 `stop_grace_period` 设了 15 秒留余量 |
 
 ---
 
@@ -591,7 +637,9 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | `/usr/bin/env: 'bash\r': No such file or directory` | 脚本是 CRLF 换行（Windows 编辑导致）。执行 `sed -i 's/\r$//' entrypoint.sh scripts/*.sh`，并保留仓库内的 `.gitattributes` |
 | 提交返回 `submitted_to: 0` | 变量未启用，或绑定的面板处于禁用状态，或青龙 `client_id/secret` 不正确 / 青龙 Open API 没开 |
 | 提交返回 `code: 49997`（请求过于频繁） | `/api/open/submit` 有令牌桶限速（2 req/s，容量 5），降低提交频率 |
-| 注册提示「系统已存在用户」 | 全系统只允许一个账号。直接登录即可；忘记密码需清库中 `users` 表 |
+| 登录报「用户不存在或查询失败」 | 数据库里还没有任何账号。**系统不预置默认账号**。要么在 `.env` 里配 `QLTOOLS_ADMIN_USERNAME/QLTOOLS_ADMIN_PASSWORD` 重启自动建号，要么打开 `/admin` 点「注册账号」注册 |
+| 注册提示「系统已存在用户」 | 全系统只允许一个账号。直接登录即可；忘记密码用 `QLTOOLS_ADMIN_RESET=1` 重启重置（见步骤 2），或清库中 `users` 表 |
+| 打开 `/admin` 不是登录页 | 确认拉到的镜像是最新的（`docker compose pull`）。`/admin` 是 `login` 路由的别名，旧镜像里没有该别名，会落到 404 页 |
 | 验证码一直提示错误 | 验证码用**内存存储**，重启容器会失效，刷新页面重新取即可 |
 | 端口 1500 被占用 | 在 `.env` 里改 `HOST_PORT=15001` |
 | `no matching manifest for linux/arm64` | 镜像只构建了 amd64。按方式 B 改 `platforms` 后重跑构建 |

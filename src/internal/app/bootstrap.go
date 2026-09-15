@@ -48,6 +48,13 @@ func Start() {
 	config.Ent = client
 	config.Log.Info("数据库连接成功 (Ent)")
 
+	// 初始化管理员账号（由 QLTOOLS_ADMIN_* 环境变量驱动）
+	// 未设置 QLTOOLS_ADMIN_PASSWORD 时该函数不做任何事，
+	// 此时仍可打开 /admin 自行注册首个账号。
+	if err := initializer.SeedAdmin(); err != nil {
+		config.Log.Error("初始化管理员账号失败", zap.Error(err))
+	}
+
 	// 初始化缓存
 	config.Cache = initializer.Cache()
 	if config.Cache == nil {

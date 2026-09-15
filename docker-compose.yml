@@ -30,6 +30,12 @@ services:
       APP_PORT: ${APP_PORT:-1500}
       # JWT 签名密钥，deploy.sh 首次运行会自动写入随机值
       APP_SECRET: ${APP_SECRET:-change_me_please}
+      # 初始管理员账号：仅在数据库里还没有任何用户时创建。
+      # 不填 QLTOOLS_ADMIN_PASSWORD 则跳过，可打开 /admin 用「注册账号」自行注册。
+      QLTOOLS_ADMIN_USERNAME: ${QLTOOLS_ADMIN_USERNAME:-admin}
+      QLTOOLS_ADMIN_PASSWORD: ${QLTOOLS_ADMIN_PASSWORD:-}
+      # 忘记密码时置 1 重启一次即可重置，之后记得改回 0
+      QLTOOLS_ADMIN_RESET: ${QLTOOLS_ADMIN_RESET:-0}
       DB_TYPE: sqlite
       DB_NAME: /app/data/ql_tools_v2.db
     volumes:
