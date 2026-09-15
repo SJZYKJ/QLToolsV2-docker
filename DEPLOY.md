@@ -523,6 +523,11 @@ QLTOOLS_ADMIN_PASSWORD=你的密码
    保存时会自动取 token，可点「测试连接」验证。
 2. **变量管理 → 新增变量**：填变量名（如 `JD_COOKIE`）、`quantity`（负载数量）、`mode`、
    `cdk_limit`（必填，不启用卡密填 `0`）；**是否启用 KEY 校验由 `enable_key` 控制，不是 `cdk_limit`**。
+   - `mode = 新建模式(1)`：每次提交都往面板里新建一条变量。
+   - `mode = 更新模式(2)`：把提交值**合并**进同名变量（已有则替换该段、没有则追加）。此模式下会多出三个可选项：
+     - **匹配正则[更新]**：从每段里提取「账号标识」用于判重（账号字段分隔符留空时才生效）。
+     - **多值分隔符**：多账号之间用什么隔开；**留空表示自动**（原值有换行用换行，否则用 `&`）。
+     - **账号字段分隔符**：取每段中第一个该符号**之前**的内容作为账号标识。例如填 `;`，`1;2` 与 `1;5` 会被认定是**同一个账号**（都是 `1`），于是把 `1;2` 改成 `1;5`，而不是追加成 `1;2&1;5`。
 3. 在变量详情里**绑定到已启用的面板**，并确认变量本身是「启用」状态。
 
 > 变量与面板只要有一方是禁用状态，提交就会返回 `submitted_to = 0`。
@@ -670,7 +675,8 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 21 | 登出接口同时注册了 `POST` 与 `GET /api/auth/logout`；前端产物里用的是 **POST**（`controller/auth.go`） |
 | 22 | token 存在进程内 `gcache`，**容器重启即全部失效**，需要重新登录；改 `APP_SECRET` 同理（`internal/utils/jwt.go`） |
 | 23 | 变量的「匹配正则」是**提取规则而非校验规则**：`FindString` 取最左匹配的子串，并**用它覆盖整个提交值**。填 `；` 而值输入 `1；2`，最终只会存 `；`。想原样保存要写 `^[\s\S]*$` 这类整体圈定的正则（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.1） |
-| 24 | **更新模式是「合并」不是「覆盖」**：同名变量的已有值按 `&`（或换行）拆段，用 `regex_update` 提取标识——标识命中就替换该段，都不命中就追加到末尾；合并结果与原文一致时不写回；只有所有面板都没有该变量名才新建。拼接沿用原值的分隔符风格（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.2） |
+| 24 | **更新模式是「合并」不是「覆盖」**：同名变量的已有值按「多值分隔符」拆段，用「账号字段分隔符」（留空时退回 `regex_update`）提取账号标识——标识命中就替换该段，都不命中就追加到末尾；合并结果与原文一致时不写回；只有所有面板都没有该变量名才新建（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.2） |
+| 25 | 变量新增两个可选字段：**`separator`（多值分隔符）** 与 **`field_separator`（账号字段分隔符）**，各自留空即保持旧行为——`separator` 留空表示自动（原值有换行用换行，否则用 `&`，且两种都算分隔符），`field_separator` 留空表示用 `regex_update` 判重。`separator` 支持 `newline` / `换行` 别名及 `\n`/`\r`/`\t` 转义。旧库升级时 Ent 自动迁移会补上这两个可空列，无需手工建表（`internal/data/ent/schema/env.go`、`internal/service/open.go`） |
 
 ---
 

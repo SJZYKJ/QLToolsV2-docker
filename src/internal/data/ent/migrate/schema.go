@@ -41,6 +41,8 @@ var (
 		{Name: "regex", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "mode", Type: field.TypeInt32},
 		{Name: "regex_update", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "separator", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "field_separator", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "is_auto_env_enable", Type: field.TypeBool, Default: true},
 		{Name: "enable_key", Type: field.TypeBool},
 		{Name: "cdk_limit", Type: field.TypeInt32, Default: 1},

@@ -641,6 +641,8 @@ type EnvMutation struct {
 	mode               *int32
 	addmode            *int32
 	regex_update       *string
+	separator          *string
+	field_separator    *string
 	is_auto_env_enable *bool
 	enable_key         *bool
 	cdk_limit          *int32
@@ -1132,6 +1134,104 @@ func (m *EnvMutation) ResetRegexUpdate() {
 	delete(m.clearedFields, env.FieldRegexUpdate)
 }
 
+// SetSeparator sets the "separator" field.
+func (m *EnvMutation) SetSeparator(s string) {
+	m.separator = &s
+}
+
+// Separator returns the value of the "separator" field in the mutation.
+func (m *EnvMutation) Separator() (r string, exists bool) {
+	v := m.separator
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSeparator returns the old "separator" field's value of the Env entity.
+// If the Env object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnvMutation) OldSeparator(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSeparator is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSeparator requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSeparator: %w", err)
+	}
+	return oldValue.Separator, nil
+}
+
+// ClearSeparator clears the value of the "separator" field.
+func (m *EnvMutation) ClearSeparator() {
+	m.separator = nil
+	m.clearedFields[env.FieldSeparator] = struct{}{}
+}
+
+// SeparatorCleared returns if the "separator" field was cleared in this mutation.
+func (m *EnvMutation) SeparatorCleared() bool {
+	_, ok := m.clearedFields[env.FieldSeparator]
+	return ok
+}
+
+// ResetSeparator resets all changes to the "separator" field.
+func (m *EnvMutation) ResetSeparator() {
+	m.separator = nil
+	delete(m.clearedFields, env.FieldSeparator)
+}
+
+// SetFieldSeparator sets the "field_separator" field.
+func (m *EnvMutation) SetFieldSeparator(s string) {
+	m.field_separator = &s
+}
+
+// FieldSeparator returns the value of the "field_separator" field in the mutation.
+func (m *EnvMutation) FieldSeparator() (r string, exists bool) {
+	v := m.field_separator
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFieldSeparator returns the old "field_separator" field's value of the Env entity.
+// If the Env object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnvMutation) OldFieldSeparator(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFieldSeparator is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFieldSeparator requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFieldSeparator: %w", err)
+	}
+	return oldValue.FieldSeparator, nil
+}
+
+// ClearFieldSeparator clears the value of the "field_separator" field.
+func (m *EnvMutation) ClearFieldSeparator() {
+	m.field_separator = nil
+	m.clearedFields[env.FieldFieldSeparator] = struct{}{}
+}
+
+// FieldSeparatorCleared returns if the "field_separator" field was cleared in this mutation.
+func (m *EnvMutation) FieldSeparatorCleared() bool {
+	_, ok := m.clearedFields[env.FieldFieldSeparator]
+	return ok
+}
+
+// ResetFieldSeparator resets all changes to the "field_separator" field.
+func (m *EnvMutation) ResetFieldSeparator() {
+	m.field_separator = nil
+	delete(m.clearedFields, env.FieldFieldSeparator)
+}
+
 // SetIsAutoEnvEnable sets the "is_auto_env_enable" field.
 func (m *EnvMutation) SetIsAutoEnvEnable(b bool) {
 	m.is_auto_env_enable = &b
@@ -1597,6 +1697,14 @@ func (m *EnvMutation) Fields() []string {
 	if m.regex_update != nil {
 		fields = append(fields, env.FieldRegexUpdate)
 	}
+
+	if m.separator != nil {
+		fields = append(fields, env.FieldSeparator)
+	}
+
+	if m.field_separator != nil {
+		fields = append(fields, env.FieldFieldSeparator)
+	}
 	if m.is_auto_env_enable != nil {
 		fields = append(fields, env.FieldIsAutoEnvEnable)
 	}
@@ -1642,6 +1750,12 @@ func (m *EnvMutation) Field(name string) (ent.Value, bool) {
 		return m.Mode()
 	case env.FieldRegexUpdate:
 		return m.RegexUpdate()
+
+	case env.FieldSeparator:
+		return m.Separator()
+
+	case env.FieldFieldSeparator:
+		return m.FieldSeparator()
 	case env.FieldIsAutoEnvEnable:
 		return m.IsAutoEnvEnable()
 	case env.FieldEnableKey:
@@ -1681,6 +1795,12 @@ func (m *EnvMutation) OldField(ctx context.Context, name string) (ent.Value, err
 		return m.OldMode(ctx)
 	case env.FieldRegexUpdate:
 		return m.OldRegexUpdate(ctx)
+
+	case env.FieldSeparator:
+		return m.OldSeparator(ctx)
+
+	case env.FieldFieldSeparator:
+		return m.OldFieldSeparator(ctx)
 	case env.FieldIsAutoEnvEnable:
 		return m.OldIsAutoEnvEnable(ctx)
 	case env.FieldEnableKey:
@@ -1759,6 +1879,22 @@ func (m *EnvMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRegexUpdate(v)
+		return nil
+
+	case env.FieldSeparator:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSeparator(v)
+		return nil
+
+	case env.FieldFieldSeparator:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFieldSeparator(v)
 		return nil
 	case env.FieldIsAutoEnvEnable:
 		v, ok := value.(bool)
@@ -1887,6 +2023,14 @@ func (m *EnvMutation) ClearedFields() []string {
 	if m.FieldCleared(env.FieldRegexUpdate) {
 		fields = append(fields, env.FieldRegexUpdate)
 	}
+
+	if m.FieldCleared(env.FieldSeparator) {
+		fields = append(fields, env.FieldSeparator)
+	}
+
+	if m.FieldCleared(env.FieldFieldSeparator) {
+		fields = append(fields, env.FieldFieldSeparator)
+	}
 	if m.FieldCleared(env.FieldPromptLevel) {
 		fields = append(fields, env.FieldPromptLevel)
 	}
@@ -1915,6 +2059,14 @@ func (m *EnvMutation) ClearField(name string) error {
 		return nil
 	case env.FieldRegexUpdate:
 		m.ClearRegexUpdate()
+		return nil
+
+	case env.FieldSeparator:
+		m.ClearSeparator()
+		return nil
+
+	case env.FieldFieldSeparator:
+		m.ClearFieldSeparator()
 		return nil
 	case env.FieldPromptLevel:
 		m.ClearPromptLevel()
@@ -1953,6 +2105,14 @@ func (m *EnvMutation) ResetField(name string) error {
 		return nil
 	case env.FieldRegexUpdate:
 		m.ResetRegexUpdate()
+		return nil
+
+	case env.FieldSeparator:
+		m.ResetSeparator()
+		return nil
+
+	case env.FieldFieldSeparator:
+		m.ResetFieldSeparator()
 		return nil
 	case env.FieldIsAutoEnvEnable:
 		m.ResetIsAutoEnvEnable()

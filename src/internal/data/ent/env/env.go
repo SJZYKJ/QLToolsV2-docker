@@ -30,6 +30,10 @@ const (
 	FieldMode = "mode"
 	// FieldRegexUpdate holds the string denoting the regex_update field in the database.
 	FieldRegexUpdate = "regex_update"
+	// FieldSeparator holds the string denoting the separator field in the database.
+	FieldSeparator = "separator"
+	// FieldFieldSeparator holds the string denoting the field_separator field in the database.
+	FieldFieldSeparator = "field_separator"
 	// FieldIsAutoEnvEnable holds the string denoting the is_auto_env_enable field in the database.
 	FieldIsAutoEnvEnable = "is_auto_env_enable"
 	// FieldEnableKey holds the string denoting the enable_key field in the database.
@@ -75,6 +79,8 @@ var Columns = []string{
 	FieldRegex,
 	FieldMode,
 	FieldRegexUpdate,
+	FieldSeparator,
+	FieldFieldSeparator,
 	FieldIsAutoEnvEnable,
 	FieldEnableKey,
 	FieldCdkLimit,
@@ -161,6 +167,16 @@ func ByMode(opts ...sql.OrderTermOption) OrderOption {
 // ByRegexUpdate orders the results by the regex_update field.
 func ByRegexUpdate(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRegexUpdate, opts...).ToFunc()
+}
+
+// BySeparator orders the results by the separator field.
+func BySeparator(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSeparator, opts...).ToFunc()
+}
+
+// ByFieldSeparator orders the results by the field_separator field.
+func ByFieldSeparator(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFieldSeparator, opts...).ToFunc()
 }
 
 // ByIsAutoEnvEnable orders the results by the is_auto_env_enable field.

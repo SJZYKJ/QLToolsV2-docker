@@ -25,6 +25,8 @@ func (Env) Fields() []ent.Field {
 		field.Text("regex").Optional().Nillable().Comment("匹配正则"),
 		field.Int32("mode").Comment("模式"),
 		field.Text("regex_update").Optional().Nillable().Comment("匹配正则[更新]"),
+		field.Text("separator").Optional().Nillable().Comment("多值分隔符"),
+		field.Text("field_separator").Optional().Nillable().Comment("账号字段分隔符"),
 		field.Bool("is_auto_env_enable").Default(true).Comment("是否自动启用提交的变量"),
 		field.Bool("enable_key").Comment("是否启用KEY"),
 		field.Int32("cdk_limit").Default(1).Comment("单次消耗卡密额度"),

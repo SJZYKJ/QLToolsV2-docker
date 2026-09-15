@@ -43,6 +43,8 @@ func (s *EnvService) AddEnv(req schema.AddEnvRequest) (*schema.AddEnvResponse, e
 		SetNillableRegex(req.Regex).
 		SetMode(req.Mode).
 		SetNillableRegexUpdate(req.RegexUpdate).
+		SetNillableSeparator(req.Separator).
+		SetNillableFieldSeparator(req.FieldSeparator).
 		SetIsAutoEnvEnable(req.IsAutoEnvEnable).
 		SetEnableKey(req.EnableKey).
 		SetCdkLimit(req.CdkLimit).
@@ -99,6 +101,8 @@ func (s *EnvService) UpdateEnv(req schema.UpdateEnvRequest) (*schema.UpdateEnvRe
 		SetNillableRegex(req.Regex).
 		SetMode(req.Mode).
 		SetNillableRegexUpdate(req.RegexUpdate).
+		SetNillableSeparator(req.Separator).
+		SetNillableFieldSeparator(req.FieldSeparator).
 		SetIsAutoEnvEnable(req.IsAutoEnvEnable).
 		SetEnableKey(req.EnableKey).
 		SetCdkLimit(req.CdkLimit).
@@ -139,6 +143,8 @@ func (s *EnvService) GetEnv(id int64) (*schema.GetEnvResponse, error) {
 		Regex:           e.Regex,
 		Mode:            e.Mode,
 		RegexUpdate:     e.RegexUpdate,
+		Separator:       e.Separator,
+		FieldSeparator:  e.FieldSeparator,
 		IsAutoEnvEnable: e.IsAutoEnvEnable,
 		EnableKey:       e.EnableKey,
 		CdkLimit:        e.CdkLimit,
@@ -197,6 +203,8 @@ func (s *EnvService) GetEnvList(req schema.GetEnvListRequest) (*schema.GetEnvLis
 			Regex:           e.Regex,
 			Mode:            e.Mode,
 			RegexUpdate:     e.RegexUpdate,
+			Separator:       e.Separator,
+			FieldSeparator:  e.FieldSeparator,
 			IsAutoEnvEnable: e.IsAutoEnvEnable,
 			EnableKey:       e.EnableKey,
 			CdkLimit:        e.CdkLimit,

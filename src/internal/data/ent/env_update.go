@@ -152,6 +152,46 @@ func (_u *EnvUpdate) ClearRegexUpdate() *EnvUpdate {
 	return _u
 }
 
+// SetSeparator sets the "separator" field.
+func (_u *EnvUpdate) SetSeparator(v string) *EnvUpdate {
+	_u.mutation.SetSeparator(v)
+	return _u
+}
+
+// SetNillableSeparator sets the "separator" field if the given value is not nil.
+func (_u *EnvUpdate) SetNillableSeparator(v *string) *EnvUpdate {
+	if v != nil {
+		_u.SetSeparator(*v)
+	}
+	return _u
+}
+
+// ClearSeparator clears the value of the "separator" field.
+func (_u *EnvUpdate) ClearSeparator() *EnvUpdate {
+	_u.mutation.ClearSeparator()
+	return _u
+}
+
+// SetFieldSeparator sets the "field_separator" field.
+func (_u *EnvUpdate) SetFieldSeparator(v string) *EnvUpdate {
+	_u.mutation.SetFieldSeparator(v)
+	return _u
+}
+
+// SetNillableFieldSeparator sets the "field_separator" field if the given value is not nil.
+func (_u *EnvUpdate) SetNillableFieldSeparator(v *string) *EnvUpdate {
+	if v != nil {
+		_u.SetFieldSeparator(*v)
+	}
+	return _u
+}
+
+// ClearFieldSeparator clears the value of the "field_separator" field.
+func (_u *EnvUpdate) ClearFieldSeparator() *EnvUpdate {
+	_u.mutation.ClearFieldSeparator()
+	return _u
+}
+
 // SetIsAutoEnvEnable sets the "is_auto_env_enable" field.
 func (_u *EnvUpdate) SetIsAutoEnvEnable(v bool) *EnvUpdate {
 	_u.mutation.SetIsAutoEnvEnable(v)
@@ -440,6 +480,20 @@ func (_u *EnvUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.RegexUpdateCleared() {
 		_spec.ClearField(env.FieldRegexUpdate, field.TypeString)
 	}
+
+	if value, ok := _u.mutation.Separator(); ok {
+		_spec.SetField(env.FieldSeparator, field.TypeString, value)
+	}
+	if _u.mutation.SeparatorCleared() {
+		_spec.ClearField(env.FieldSeparator, field.TypeString)
+	}
+
+	if value, ok := _u.mutation.FieldSeparator(); ok {
+		_spec.SetField(env.FieldFieldSeparator, field.TypeString, value)
+	}
+	if _u.mutation.FieldSeparatorCleared() {
+		_spec.ClearField(env.FieldFieldSeparator, field.TypeString)
+	}
 	if value, ok := _u.mutation.IsAutoEnvEnable(); ok {
 		_spec.SetField(env.FieldIsAutoEnvEnable, field.TypeBool, value)
 	}
@@ -699,6 +753,46 @@ func (_u *EnvUpdateOne) SetNillableRegexUpdate(v *string) *EnvUpdateOne {
 // ClearRegexUpdate clears the value of the "regex_update" field.
 func (_u *EnvUpdateOne) ClearRegexUpdate() *EnvUpdateOne {
 	_u.mutation.ClearRegexUpdate()
+	return _u
+}
+
+// SetSeparator sets the "separator" field.
+func (_u *EnvUpdateOne) SetSeparator(v string) *EnvUpdateOne {
+	_u.mutation.SetSeparator(v)
+	return _u
+}
+
+// SetNillableSeparator sets the "separator" field if the given value is not nil.
+func (_u *EnvUpdateOne) SetNillableSeparator(v *string) *EnvUpdateOne {
+	if v != nil {
+		_u.SetSeparator(*v)
+	}
+	return _u
+}
+
+// ClearSeparator clears the value of the "separator" field.
+func (_u *EnvUpdateOne) ClearSeparator() *EnvUpdateOne {
+	_u.mutation.ClearSeparator()
+	return _u
+}
+
+// SetFieldSeparator sets the "field_separator" field.
+func (_u *EnvUpdateOne) SetFieldSeparator(v string) *EnvUpdateOne {
+	_u.mutation.SetFieldSeparator(v)
+	return _u
+}
+
+// SetNillableFieldSeparator sets the "field_separator" field if the given value is not nil.
+func (_u *EnvUpdateOne) SetNillableFieldSeparator(v *string) *EnvUpdateOne {
+	if v != nil {
+		_u.SetFieldSeparator(*v)
+	}
+	return _u
+}
+
+// ClearFieldSeparator clears the value of the "field_separator" field.
+func (_u *EnvUpdateOne) ClearFieldSeparator() *EnvUpdateOne {
+	_u.mutation.ClearFieldSeparator()
 	return _u
 }
 
@@ -1019,6 +1113,20 @@ func (_u *EnvUpdateOne) sqlSave(ctx context.Context) (_node *Env, err error) {
 	}
 	if _u.mutation.RegexUpdateCleared() {
 		_spec.ClearField(env.FieldRegexUpdate, field.TypeString)
+	}
+
+	if value, ok := _u.mutation.Separator(); ok {
+		_spec.SetField(env.FieldSeparator, field.TypeString, value)
+	}
+	if _u.mutation.SeparatorCleared() {
+		_spec.ClearField(env.FieldSeparator, field.TypeString)
+	}
+
+	if value, ok := _u.mutation.FieldSeparator(); ok {
+		_spec.SetField(env.FieldFieldSeparator, field.TypeString, value)
+	}
+	if _u.mutation.FieldSeparatorCleared() {
+		_spec.ClearField(env.FieldFieldSeparator, field.TypeString)
 	}
 	if value, ok := _u.mutation.IsAutoEnvEnable(); ok {
 		_spec.SetField(env.FieldIsAutoEnvEnable, field.TypeBool, value)

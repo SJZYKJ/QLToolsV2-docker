@@ -35,6 +35,13 @@ QLToolsV2 一键脚本：确保面板存在 -> 确保变量存在并启用 -> �
                      —— 控制 KEY 校验的是这个字段，不是 cdk_limit
   ENV_AUTO_ENABLE    提交到青龙后是否自动启用该变量，默认 true
   ENV_REMARKS        变量备注，可选
+  ENV_SEPARATOR      多值分隔符，可选（仅 mode=2 更新模式有意义）
+                     留空 = 自动（原值有换行用换行，否则用 &）；
+                     可填 & / , / newline（或 换行）/ \n 等
+  ENV_FIELD_SEPARATOR 账号字段分隔符，可选（仅 mode=2 更新模式有意义）
+                     取每段中第一个该符号之前的内容作为「账号标识」用于判重，
+                     如填 ; 时 1;2 与 1;5 会被认定同一个账号；留空则用匹配正则
+  ENV_REGEX_UPDATE   匹配正则[更新]，可选（仅账号字段分隔符留空时生效）
 """
 
 import base64
@@ -62,6 +69,9 @@ CDK_LIMIT = int(os.environ.get("ENV_CDK_LIMIT", "0"))
 ENABLE_KEY = os.environ.get("ENV_ENABLE_KEY", "false").lower() in ("1", "true", "yes")
 AUTO_ENABLE = os.environ.get("ENV_AUTO_ENABLE", "true").lower() in ("1", "true", "yes")
 ENV_REMARKS = os.environ.get("ENV_REMARKS", "") or None
+# 仅更新模式(mode=2)有意义，留空即保持默认行为
+ENV_SEPARATOR = os.environ.get("ENV_SEPARATOR", "") or None
+ENV_FIELD_SEPARATOR = os.environ.get("ENV_FIELD_SEPARATOR", "") or None
 
 CODE_SUCCESS = 20000
 
@@ -170,20 +180,24 @@ def ensure_env(token):
             return env["id"]
 
     # AddEnvRequest 中 quantity / mode / cdk_limit 均为必填
-    status, resp = _req(
-        "POST",
-        "/api/env/create",
-        {
-            "name": ENV_NAME,
-            "remarks": ENV_REMARKS,
-            "quantity": QUANTITY,
-            "mode": MODE,
-            "cdk_limit": CDK_LIMIT,
-            "enable_key": ENABLE_KEY,
-            "is_auto_env_enable": AUTO_ENABLE,
-        },
-        token=token,
-    )
+    payload = {
+        "name": ENV_NAME,
+        "remarks": ENV_REMARKS,
+        "quantity": QUANTITY,
+        "mode": MODE,
+        "cdk_limit": CDK_LIMIT,
+        "enable_key": ENABLE_KEY,
+        "is_auto_env_enable": AUTO_ENABLE,
+    }
+    # 更新模式(mode=2)的三个可选项：只传显式设置过的，留空交给后端默认行为
+    if ENV_SEPARATOR is not None:
+        payload["separator"] = ENV_SEPARATOR
+    if ENV_FIELD_SEPARATOR is not None:
+        payload["field_separator"] = ENV_FIELD_SEPARATOR
+    if os.environ.get("ENV_REGEX_UPDATE"):
+        payload["regex_update"] = os.environ["ENV_REGEX_UPDATE"]
+
+    status, resp = _req("POST", "/api/env/create", payload, token=token)
     if not _ok(resp):
         _fail("创建变量", resp)
     eid = (resp.get("data") or {}).get("id")

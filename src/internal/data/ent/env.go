@@ -34,6 +34,10 @@ type Env struct {
 	Mode int32 `json:"mode,omitempty"`
 	// 匹配正则[更新]
 	RegexUpdate *string `json:"regex_update,omitempty"`
+	// 多值分隔符
+	Separator *string `json:"separator,omitempty"`
+	// 账号字段分隔符
+	FieldSeparator *string `json:"field_separator,omitempty"`
 	// 是否自动启用提交的变量
 	IsAutoEnvEnable bool `json:"is_auto_env_enable,omitempty"`
 	// 是否启用KEY
@@ -92,7 +96,7 @@ func (*Env) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case env.FieldID, env.FieldQuantity, env.FieldMode, env.FieldCdkLimit:
 			values[i] = new(sql.NullInt64)
-		case env.FieldName, env.FieldRemarks, env.FieldRegex, env.FieldRegexUpdate, env.FieldPromptLevel, env.FieldPromptContent:
+		case env.FieldName, env.FieldRemarks, env.FieldRegex, env.FieldRegexUpdate, env.FieldSeparator, env.FieldFieldSeparator, env.FieldPromptLevel, env.FieldPromptContent:
 			values[i] = new(sql.NullString)
 		case env.FieldCreatedAt, env.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -167,6 +171,22 @@ func (_m *Env) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.RegexUpdate = new(string)
 				*_m.RegexUpdate = value.String
+			}
+
+		case env.FieldSeparator:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field separator", values[i])
+			} else if value.Valid {
+				_m.Separator = new(string)
+				*_m.Separator = value.String
+			}
+
+		case env.FieldFieldSeparator:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field field_separator", values[i])
+			} else if value.Valid {
+				_m.FieldSeparator = new(string)
+				*_m.FieldSeparator = value.String
 			}
 		case env.FieldIsAutoEnvEnable:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -285,6 +305,16 @@ func (_m *Env) String() string {
 	builder.WriteString(", ")
 	if v := _m.RegexUpdate; v != nil {
 		builder.WriteString("regex_update=")
+		builder.WriteString(*v)
+	}
+
+	if v := _m.Separator; v != nil {
+		builder.WriteString("separator=")
+		builder.WriteString(*v)
+	}
+
+	if v := _m.FieldSeparator; v != nil {
+		builder.WriteString("field_separator=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

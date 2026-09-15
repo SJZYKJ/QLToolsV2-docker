@@ -110,6 +110,34 @@ func (_c *EnvCreate) SetNillableRegexUpdate(v *string) *EnvCreate {
 	return _c
 }
 
+// SetSeparator sets the "separator" field.
+func (_c *EnvCreate) SetSeparator(v string) *EnvCreate {
+	_c.mutation.SetSeparator(v)
+	return _c
+}
+
+// SetNillableSeparator sets the "separator" field if the given value is not nil.
+func (_c *EnvCreate) SetNillableSeparator(v *string) *EnvCreate {
+	if v != nil {
+		_c.SetSeparator(*v)
+	}
+	return _c
+}
+
+// SetFieldSeparator sets the "field_separator" field.
+func (_c *EnvCreate) SetFieldSeparator(v string) *EnvCreate {
+	_c.mutation.SetFieldSeparator(v)
+	return _c
+}
+
+// SetNillableFieldSeparator sets the "field_separator" field if the given value is not nil.
+func (_c *EnvCreate) SetNillableFieldSeparator(v *string) *EnvCreate {
+	if v != nil {
+		_c.SetFieldSeparator(*v)
+	}
+	return _c
+}
+
 // SetIsAutoEnvEnable sets the "is_auto_env_enable" field.
 func (_c *EnvCreate) SetIsAutoEnvEnable(v bool) *EnvCreate {
 	_c.mutation.SetIsAutoEnvEnable(v)
@@ -373,6 +401,16 @@ func (_c *EnvCreate) createSpec() (*Env, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RegexUpdate(); ok {
 		_spec.SetField(env.FieldRegexUpdate, field.TypeString, value)
 		_node.RegexUpdate = &value
+	}
+
+	if value, ok := _c.mutation.Separator(); ok {
+		_spec.SetField(env.FieldSeparator, field.TypeString, value)
+		_node.Separator = &value
+	}
+
+	if value, ok := _c.mutation.FieldSeparator(); ok {
+		_spec.SetField(env.FieldFieldSeparator, field.TypeString, value)
+		_node.FieldSeparator = &value
 	}
 	if value, ok := _c.mutation.IsAutoEnvEnable(); ok {
 		_spec.SetField(env.FieldIsAutoEnvEnable, field.TypeBool, value)

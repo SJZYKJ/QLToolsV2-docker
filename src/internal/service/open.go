@@ -391,12 +391,13 @@ func (s *OpenService) SubmitVariable(req schema.SubmitVariableRequest) (*schema.
 		submittedTo = 1
 
 	case _const.UpdateMode:
-		// 更新模式：遍历所有面板，根据正则表达式匹配并更新
-		if e.RegexUpdate == nil || *e.RegexUpdate == "" {
-			return nil, errors.New("更新模式下必须设置更新正则表达式")
+		// 更新模式：遍历所有面板，按账号标识合并（已有则替换该段，没有则追加）
+		rule, ruleErr := buildMergeRule(e)
+		if ruleErr != nil {
+			return nil, ruleErr
 		}
 
-		updatedCount, _, err := s.updateExistingVariables(panelIDs, e.Name, *e.RegexUpdate, processedValue, req.Remarks)
+		updatedCount, _, err := s.updateExistingVariables(panelIDs, e.Name, rule, processedValue, req.Remarks)
 		if err != nil {
 			return nil, fmt.Errorf("更新现有变量失败: %w", err)
 		}
@@ -592,26 +593,48 @@ func (s *OpenService) enablePanelEnv(panelID int64, envID int) error {
 	return nil
 }
 
+// envMergeRule 更新模式的合并规则（对应变量配置里的三个可选项）
+type envMergeRule struct {
+	Separator      string         // 多值分隔符，空 = 自动（原值含换行用换行，否则用 "&"）
+	FieldSeparator string         // 账号字段分隔符，非空时取每段中第一个它之前的内容作为账号标识
+	Regex          *regexp.Regexp // 匹配正则[更新]，仅当 FieldSeparator 为空时用于提取账号标识
+}
+
+// buildMergeRule 依据变量配置组装合并规则
+func buildMergeRule(e *ent.Env) (envMergeRule, error) {
+	rule := envMergeRule{}
+	if e.Separator != nil {
+		rule.Separator = *e.Separator
+	}
+	if e.FieldSeparator != nil {
+		rule.FieldSeparator = *e.FieldSeparator
+	}
+	// 配了「账号字段分隔符」就不再需要正则；否则才编译「匹配正则[更新]」
+	if rule.FieldSeparator == "" && e.RegexUpdate != nil && *e.RegexUpdate != "" {
+		re, err := regexp.Compile(*e.RegexUpdate)
+		if err != nil {
+			return rule, fmt.Errorf("编译更新正则表达式失败: %w", err)
+		}
+		rule.Regex = re
+	}
+	return rule, nil
+}
+
 // updateExistingVariables 更新现有变量（更新模式）
 //
 // 语义：把用户提交的值「合并」进同名环境变量，而不是整条覆盖。
-//   - 已有值按 "&"（或换行）拆成若干字段段，青龙的多值变量就是这么存的
-//   - 用 regexPattern 分别从「用户提交的值」和「每个字段段」里提取标识
-//   - 标识相同 → 该段原位替换成用户提交的完整值（已有则替换）
-//   - 标识都不同 → 在末尾追加用户提交的值（没有则新增）
+//   - 已有值按多值分隔符拆成若干段，青龙的多值变量就是这么存的
+//   - 用「账号字段分隔符」（未配置时用「匹配正则[更新]」）分别从
+//     提交值和每个已有段里提取账号标识
+//   - 账号标识相同 → 该段原位替换成提交的完整值（已有则替换）
+//   - 账号标识都不同 → 在末尾追加提交的值（没有则新增）
 //   - 合并结果与原有值完全一致时不写回，避免重复提交产生冗余写入
 // 面板中不存在同名变量时才返回 0，由调用方退化为新建。
-func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPattern, newValue, remarks string) (int, []int64, error) {
-	// 编译正则表达式
-	regex, err := regexp.Compile(regexPattern)
+func (s *OpenService) updateExistingVariables(panelIDs []int64, envName string, rule envMergeRule, newValue, remarks string) (int, []int64, error) {
+	// 计算提交值的账号标识（所有面板共享此结果）
+	submittedKey, err := accountKey(newValue, rule.FieldSeparator, rule.Regex)
 	if err != nil {
-		return 0, nil, fmt.Errorf("编译正则表达式失败: %w", err)
-	}
-
-	// 预先从用户提交的值中提取匹配正则的标识（所有面板共享此结果）
-	submittedMatch := regex.FindString(newValue)
-	if submittedMatch == "" {
-		return 0, nil, fmt.Errorf("用户提交的值不匹配正则表达式")
+		return 0, nil, err
 	}
 
 	updatedCount := 0
@@ -639,19 +662,21 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 		}
 
 		// 在同名变量中挑出写入目标：
-		//   优先「已包含相同标识」的那条（替换该段）；
+		//   优先「账号标识相同」的那条（替换该段）；
 		//   都没有命中，就退而把新值追加到第一条同名变量后面。
 		targetIdx := -1
 		targetValue := ""
 		targetAction := ""
 
 		for idx := range envResponse.Data {
-			e := envResponse.Data[idx]
-			if e.Name != envName {
+			item := envResponse.Data[idx]
+			if item.Name != envName {
 				continue
 			}
 
-			if merged, hit := replaceMatchedSegment(regex, submittedMatch, e.Value, newValue); hit {
+			sep, auto := resolveSeparator(rule.Separator, item.Value)
+
+			if merged, hit := replaceMatchedSegment(item.Value, sep, auto, rule, submittedKey, newValue); hit {
 				targetIdx = idx
 				targetValue = merged
 				targetAction = "替换"
@@ -660,7 +685,7 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 
 			if targetIdx == -1 {
 				targetIdx = idx
-				targetValue = appendSegment(e.Value, newValue)
+				targetValue = appendSegment(item.Value, sep, auto, newValue)
 				targetAction = "追加"
 			}
 		}
@@ -698,8 +723,8 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 			continue
 		}
 
-		config.Log.Info(fmt.Sprintf("成功%s面板%d变量%d: %s (匹配标识: %s) => %s",
-			targetAction, panelID, target.Id, target.Name, submittedMatch, targetValue))
+		config.Log.Info(fmt.Sprintf("成功%s面板%d变量%d: %s (账号标识: %s) => %s",
+			targetAction, panelID, target.Id, target.Name, submittedKey, targetValue))
 		updatedCount++
 		updatedPanelIDs = append(updatedPanelIDs, panelID)
 		break
@@ -708,38 +733,93 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 	return updatedCount, updatedPanelIDs, nil
 }
 
-// envSeparator 判断已有值使用的多值分隔符：沿用原有风格，默认用 "&"
-func envSeparator(value string) string {
-	if strings.Contains(value, "\n") {
-		return "\n"
+// resolveSeparator 决定本次合并使用的多值分隔符。
+//   - configured 非空 → 使用它（支持 \n \r \t 转义，也接受 newline / 换行 两个别名）
+//   - 为空 → 自动：原值含换行就用换行，否则用 "&"
+//
+// 返回的 auto 为 true 表示未显式配置，此时 "&" 与换行都会被当作分隔符（与旧版本行为一致）。
+func resolveSeparator(configured, existingValue string) (sep string, auto bool) {
+	if s := unescapeSeparator(configured); s != "" {
+		return s, false
 	}
-	return "&"
+	if strings.Contains(existingValue, "\n") {
+		return "\n", true
+	}
+	return "&", true
 }
 
-// splitEnvSegments 把多值环境变量拆成字段段，"&" 与换行都当作分隔符，忽略空白段
-func splitEnvSegments(value string) []string {
-	segments := make([]string, 0, 4)
-	for _, line := range strings.Split(value, "\n") {
-		for _, part := range strings.Split(line, "&") {
-			if seg := strings.TrimSpace(part); seg != "" {
-				segments = append(segments, seg)
-			}
+// unescapeSeparator 解析分隔符配置里的转义写法
+func unescapeSeparator(s string) string {
+	if s == "" {
+		return ""
+	}
+	if t := strings.ToLower(strings.TrimSpace(s)); t == "newline" || t == "换行" {
+		return "\n"
+	}
+	return strings.NewReplacer(`\n`, "\n", `\r`, "\r", `\t`, "\t").Replace(s)
+}
+
+// splitEnvSegments 把多值环境变量的值拆成若干段（忽略空白段）。
+// auto 为 true 时 "&" 与换行都算分隔符；否则只按 sep 拆。
+func splitEnvSegments(value, sep string, auto bool) []string {
+	raw := make([]string, 0, 4)
+	if auto {
+		for _, line := range strings.Split(value, "\n") {
+			raw = append(raw, strings.Split(line, "&")...)
+		}
+	} else {
+		raw = strings.Split(value, sep)
+	}
+
+	segments := make([]string, 0, len(raw))
+	for _, part := range raw {
+		if seg := strings.TrimSpace(part); seg != "" {
+			segments = append(segments, seg)
 		}
 	}
 	return segments
 }
 
-// replaceMatchedSegment 在已有值里找出「标识与提交值相同」的段，原位替换成 newValue
-// 命中返回（合并后的值, true）；没有命中返回（"", false）
-func replaceMatchedSegment(regex *regexp.Regexp, submittedMatch, existingValue, newValue string) (string, bool) {
-	segments := splitEnvSegments(existingValue)
+// accountKey 计算一个值的「账号标识」：
+//  1. 配置了「账号字段分隔符」→ 取第一个该分隔符之前的内容
+//  2. 否则用「匹配正则[更新]」提取
+//  3. 两者都没配 → 返回整串，即「内容完全相同才算重复」
+func accountKey(value, fieldSeparator string, re *regexp.Regexp) (string, error) {
+	if fieldSeparator != "" {
+		if idx := strings.Index(value, fieldSeparator); idx >= 0 {
+			return strings.TrimSpace(value[:idx]), nil
+		}
+		return strings.TrimSpace(value), nil
+	}
+	if re != nil {
+		matched := re.FindString(value)
+		if matched == "" {
+			return "", fmt.Errorf("变量值不匹配更新正则表达式 %q", re.String())
+		}
+		return matched, nil
+	}
+	return strings.TrimSpace(value), nil
+}
+
+// replaceMatchedSegment 在已有值里找出「账号标识与提交值相同」的段，原位替换成 newValue。
+// 命中返回（合并后的值, true）；没有命中返回（"", false）。
+func replaceMatchedSegment(existingValue, sep string, auto bool, rule envMergeRule, submittedKey, newValue string) (string, bool) {
+	segments := splitEnvSegments(existingValue, sep, auto)
 	if len(segments) == 0 {
 		return "", false
 	}
 
 	hit := false
 	for i, seg := range segments {
-		if !hit && regex.FindString(seg) == submittedMatch {
+		if hit {
+			continue
+		}
+		key, err := accountKey(seg, rule.FieldSeparator, rule.Regex)
+		if err != nil {
+			// 已有段与判重规则不匹配时跳过，不影响其它段
+			continue
+		}
+		if key == submittedKey {
 			segments[i] = newValue
 			hit = true
 		}
@@ -748,13 +828,14 @@ func replaceMatchedSegment(regex *regexp.Regexp, submittedMatch, existingValue, 
 	if !hit {
 		return "", false
 	}
-	return strings.Join(segments, envSeparator(existingValue)), true
+	return strings.Join(segments, sep), true
 }
 
 // appendSegment 把新值追加到已有值末尾
-func appendSegment(existingValue, newValue string) string {
-	segments := append(splitEnvSegments(existingValue), newValue)
-	return strings.Join(segments, envSeparator(existingValue))
+func appendSegment(existingValue, sep string, auto bool, newValue string) string {
+	segments := splitEnvSegments(existingValue, sep, auto)
+	segments = append(segments, newValue)
+	return strings.Join(segments, sep)
 }
 
 // executeEnvPlugins 执行环境变量绑定的插件

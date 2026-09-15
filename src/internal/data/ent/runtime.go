@@ -57,11 +57,11 @@ func init() {
 	// env.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	env.NameValidator = envDescName.Validators[0].(func(string) error)
 	// envDescIsAutoEnvEnable is the schema descriptor for is_auto_env_enable field.
-	envDescIsAutoEnvEnable := envFields[9].Descriptor()
+	envDescIsAutoEnvEnable := envFields[11].Descriptor()
 	// env.DefaultIsAutoEnvEnable holds the default value on creation for the is_auto_env_enable field.
 	env.DefaultIsAutoEnvEnable = envDescIsAutoEnvEnable.Default.(bool)
 	// envDescCdkLimit is the schema descriptor for cdk_limit field.
-	envDescCdkLimit := envFields[11].Descriptor()
+	envDescCdkLimit := envFields[13].Descriptor()
 	// env.DefaultCdkLimit holds the default value on creation for the cdk_limit field.
 	env.DefaultCdkLimit = envDescCdkLimit.Default.(int32)
 	envpluginFields := schema.EnvPlugin{}.Fields()

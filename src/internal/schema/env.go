@@ -8,6 +8,8 @@ type AddEnvRequest struct {
 	Regex           *string `json:"regex"`                        // 匹配正则
 	Mode            int32   `json:"mode" binding:"required"`      // 模式
 	RegexUpdate     *string `json:"regex_update"`                 // 匹配正则[更新]
+	Separator       *string `json:"separator"`                    // 多值分隔符
+	FieldSeparator  *string `json:"field_separator"`              // 账号字段分隔符
 	IsAutoEnvEnable bool    `json:"is_auto_env_enable"`           // 是否自动启用提交的变量
 	EnableKey       bool    `json:"enable_key"`                   // 是否启用KEY
 	CdkLimit        int32   `json:"cdk_limit" binding:"required"` // 单次消耗卡密额度
@@ -31,6 +33,8 @@ type UpdateEnvRequest struct {
 	Regex           *string `json:"regex"`                        // 匹配正则
 	Mode            int32   `json:"mode" binding:"required"`      // 模式
 	RegexUpdate     *string `json:"regex_update"`                 // 匹配正则[更新]
+	Separator       *string `json:"separator"`                    // 多值分隔符
+	FieldSeparator  *string `json:"field_separator"`              // 账号字段分隔符
 	IsAutoEnvEnable bool    `json:"is_auto_env_enable"`           // 是否自动启用提交的变量
 	EnableKey       bool    `json:"enable_key"`                   // 是否启用KEY
 	CdkLimit        int32   `json:"cdk_limit" binding:"required"` // 单次消耗卡密额度
@@ -54,6 +58,8 @@ type GetEnvResponse struct {
 	Regex           *string `json:"regex"`              // 匹配正则
 	Mode            int32   `json:"mode"`               // 模式
 	RegexUpdate     *string `json:"regex_update"`       // 匹配正则[更新]
+	Separator       *string `json:"separator"`             // 多值分隔符
+	FieldSeparator  *string `json:"field_separator"`       // 账号字段分隔符
 	IsAutoEnvEnable bool    `json:"is_auto_env_enable"` // 是否自动启用提交的变量
 	EnableKey       bool    `json:"enable_key"`         // 是否启用KEY
 	CdkLimit        int32   `json:"cdk_limit"`          // 单次消耗卡密额度
