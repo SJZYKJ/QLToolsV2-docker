@@ -97,7 +97,7 @@ func resetAdminPassword(ctx context.Context, username, password string) error {
 		return fmt.Errorf("密码加密失败: %w", err)
 	}
 
-	if err = config.Ent.User.UpdateOneID(u.ID).
+	if _, err = config.Ent.User.UpdateOneID(u.ID).
 		SetPassword(string(hashed)).
 		SetUpdatedAt(time.Now()).
 		Save(ctx); err != nil {
