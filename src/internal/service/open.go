@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -401,8 +402,8 @@ func (s *OpenService) SubmitVariable(req schema.SubmitVariableRequest) (*schema.
 		}
 
 		if updatedCount == 0 {
-			// 没有匹配到任何变量，使用新建逻辑
-			config.Log.Info("更新模式下未匹配到任何变量，使用新建逻辑")
+			// 所有面板都没有同名变量，只能新建
+			config.Log.Info("更新模式下各面板均无同名变量，使用新建逻辑")
 			err = s.submitAndAutoEnable(req.EnvID, panelIDs, e.Name, processedValue, req.Remarks, e.IsAutoEnvEnable)
 			if err != nil {
 				return nil, err
@@ -592,6 +593,14 @@ func (s *OpenService) enablePanelEnv(panelID int64, envID int) error {
 }
 
 // updateExistingVariables 更新现有变量（更新模式）
+//
+// 语义：把用户提交的值「合并」进同名环境变量，而不是整条覆盖。
+//   - 已有值按 "&"（或换行）拆成若干字段段，青龙的多值变量就是这么存的
+//   - 用 regexPattern 分别从「用户提交的值」和「每个字段段」里提取标识
+//   - 标识相同 → 该段原位替换成用户提交的完整值（已有则替换）
+//   - 标识都不同 → 在末尾追加用户提交的值（没有则新增）
+//   - 合并结果与原有值完全一致时不写回，避免重复提交产生冗余写入
+// 面板中不存在同名变量时才返回 0，由调用方退化为新建。
 func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPattern, newValue, remarks string) (int, []int64, error) {
 	// 编译正则表达式
 	regex, err := regexp.Compile(regexPattern)
@@ -599,7 +608,7 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 		return 0, nil, fmt.Errorf("编译正则表达式失败: %w", err)
 	}
 
-	// 预先从用户提交的值中提取匹配正则的内容（所有面板共享此结果）
+	// 预先从用户提交的值中提取匹配正则的标识（所有面板共享此结果）
 	submittedMatch := regex.FindString(newValue)
 	if submittedMatch == "" {
 		return 0, nil, fmt.Errorf("用户提交的值不匹配正则表达式")
@@ -629,56 +638,123 @@ func (s *OpenService) updateExistingVariables(panelIDs []int64, envName, regexPa
 			continue
 		}
 
-		// 查找匹配的环境变量
-		panelUpdated := false
-		for _, e := range envResponse.Data {
-			// 检查变量名是否匹配
-			if e.Name == envName {
-				// 从API返回的变量值中提取匹配正则的内容
-				existingMatch := regex.FindString(e.Value)
-				if existingMatch == "" {
-					// API返回的值不匹配正则，跳过
-					continue
-				}
+		// 在同名变量中挑出写入目标：
+		//   优先「已包含相同标识」的那条（替换该段）；
+		//   都没有命中，就退而把新值追加到第一条同名变量后面。
+		targetIdx := -1
+		targetValue := ""
+		targetAction := ""
 
-				// 只有当两者提取的内容相同时，才更新该变量
-				if submittedMatch == existingMatch {
-					// 更新变量
-					updateRequest := schema.PutEnvRequest{
-						Id:      e.Id,
-						Name:    e.Name,
-						Value:   newValue,
-						Remarks: remarks,
-					}
+		for idx := range envResponse.Data {
+			e := envResponse.Data[idx]
+			if e.Name != envName {
+				continue
+			}
 
-					updateResponse, err := qlAPI.PutEnvs(updateRequest)
-					if err != nil {
-						config.Log.Warn(fmt.Sprintf("更新面板%d变量%d失败: %v", panelID, e.Id, err))
-						continue
-					}
+			if merged, hit := replaceMatchedSegment(regex, submittedMatch, e.Value, newValue); hit {
+				targetIdx = idx
+				targetValue = merged
+				targetAction = "替换"
+				break
+			}
 
-					if updateResponse.Code != 200 {
-						config.Log.Warn(fmt.Sprintf("更新面板%d变量%d失败，响应码: %d", panelID, e.Id, updateResponse.Code))
-						continue
-					}
-
-					config.Log.Info(fmt.Sprintf("成功更新面板%d变量%d: %s (匹配内容: %s)", panelID, e.Id, e.Name, submittedMatch))
-					panelUpdated = true
-					// 更新成功后立即结束，停止继续匹配该面板的其他变量
-					break
-				}
+			if targetIdx == -1 {
+				targetIdx = idx
+				targetValue = appendSegment(e.Value, newValue)
+				targetAction = "追加"
 			}
 		}
 
-		if panelUpdated {
+		if targetIdx == -1 {
+			// 该面板没有同名变量，换下一个面板试试
+			continue
+		}
+
+		target := envResponse.Data[targetIdx]
+
+		if targetValue == target.Value {
+			// 提交的内容已经在该变量里了，不必重复写入
+			config.Log.Info(fmt.Sprintf("面板%d变量%d已包含相同内容，跳过写入: %s", panelID, target.Id, target.Name))
 			updatedCount++
 			updatedPanelIDs = append(updatedPanelIDs, panelID)
-			// 更新成功后立即返回，停止遍历其他面板
 			break
 		}
+
+		updateRequest := schema.PutEnvRequest{
+			Id:      target.Id,
+			Name:    target.Name,
+			Value:   targetValue,
+			Remarks: remarks,
+		}
+
+		updateResponse, err := qlAPI.PutEnvs(updateRequest)
+		if err != nil {
+			config.Log.Warn(fmt.Sprintf("更新面板%d变量%d失败: %v", panelID, target.Id, err))
+			continue
+		}
+
+		if updateResponse.Code != 200 {
+			config.Log.Warn(fmt.Sprintf("更新面板%d变量%d失败，响应码: %d", panelID, target.Id, updateResponse.Code))
+			continue
+		}
+
+		config.Log.Info(fmt.Sprintf("成功%s面板%d变量%d: %s (匹配标识: %s) => %s",
+			targetAction, panelID, target.Id, target.Name, submittedMatch, targetValue))
+		updatedCount++
+		updatedPanelIDs = append(updatedPanelIDs, panelID)
+		break
 	}
 
 	return updatedCount, updatedPanelIDs, nil
+}
+
+// envSeparator 判断已有值使用的多值分隔符：沿用原有风格，默认用 "&"
+func envSeparator(value string) string {
+	if strings.Contains(value, "\n") {
+		return "\n"
+	}
+	return "&"
+}
+
+// splitEnvSegments 把多值环境变量拆成字段段，"&" 与换行都当作分隔符，忽略空白段
+func splitEnvSegments(value string) []string {
+	segments := make([]string, 0, 4)
+	for _, line := range strings.Split(value, "\n") {
+		for _, part := range strings.Split(line, "&") {
+			if seg := strings.TrimSpace(part); seg != "" {
+				segments = append(segments, seg)
+			}
+		}
+	}
+	return segments
+}
+
+// replaceMatchedSegment 在已有值里找出「标识与提交值相同」的段，原位替换成 newValue
+// 命中返回（合并后的值, true）；没有命中返回（"", false）
+func replaceMatchedSegment(regex *regexp.Regexp, submittedMatch, existingValue, newValue string) (string, bool) {
+	segments := splitEnvSegments(existingValue)
+	if len(segments) == 0 {
+		return "", false
+	}
+
+	hit := false
+	for i, seg := range segments {
+		if !hit && regex.FindString(seg) == submittedMatch {
+			segments[i] = newValue
+			hit = true
+		}
+	}
+
+	if !hit {
+		return "", false
+	}
+	return strings.Join(segments, envSeparator(existingValue)), true
+}
+
+// appendSegment 把新值追加到已有值末尾
+func appendSegment(existingValue, newValue string) string {
+	segments := append(splitEnvSegments(existingValue), newValue)
+	return strings.Join(segments, envSeparator(existingValue))
 }
 
 // executeEnvPlugins 执行环境变量绑定的插件

@@ -670,6 +670,7 @@ JWT 请求头格式：`Authorization: Bearer <access_token>`
 | 21 | 登出接口同时注册了 `POST` 与 `GET /api/auth/logout`；前端产物里用的是 **POST**（`controller/auth.go`） |
 | 22 | token 存在进程内 `gcache`，**容器重启即全部失效**，需要重新登录；改 `APP_SECRET` 同理（`internal/utils/jwt.go`） |
 | 23 | 变量的「匹配正则」是**提取规则而非校验规则**：`FindString` 取最左匹配的子串，并**用它覆盖整个提交值**。填 `；` 而值输入 `1；2`，最终只会存 `；`。想原样保存要写 `^[\s\S]*$` 这类整体圈定的正则（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.1） |
+| 24 | **更新模式是「合并」不是「覆盖」**：同名变量的已有值按 `&`（或换行）拆段，用 `regex_update` 提取标识——标识命中就替换该段，都不命中就追加到末尾；合并结果与原文一致时不写回；只有所有面板都没有该变量名才新建。拼接沿用原值的分隔符风格（`internal/service/open.go`，详见 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) 5.2） |
 
 ---
 
